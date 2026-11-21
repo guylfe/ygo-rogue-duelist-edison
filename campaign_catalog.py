@@ -26,8 +26,7 @@ def card_sources(cid):
  if cid not in g.BY_ID:return dict(packs=[],opponents=[])
  identity=g.card_identity(cid)
  def includes(ids):return any(x in g.BY_ID and g.card_identity(x)==identity for x in ids)
- packs=[dict(id=p['id'],name=p['name']+(' (optional Act 3)' if p is content.EXTREME_VICTORY_PACK else ''))
-        for p in [*content.PACKS,content.EXTREME_VICTORY_PACK] if includes(p['common']+p['rare']+p.get('starter_support',[]))]
+ packs=[dict(id=p['id'],name=p['name']) for p in content.PACKS if includes(p['common']+p['rare']+p.get('starter_support',[]))]
  catalog=watch_catalog();opponents=[]
  for i,rows in catalog['cpuWatchDecks'].items():
   name=catalog['cpuWatchOpponents'].get(i,{}).get('name') or content.CHARACTERS[int(i)]['name']

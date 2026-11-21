@@ -7,8 +7,6 @@ from pathlib import Path
 CONFIG = json.loads((Path(__file__).parent / 'data/campaign-acts.json').read_text(encoding='utf8'))
 ACTS = CONFIG['acts']
 FIRST_ACT = {cid: n for n, ids in enumerate(CONFIG['card_ids'], 1) for cid in ids}
-EXTREME_VICTORY = 'EN-EXVC'
-OPTIONAL_CARDS = frozenset(c['id'] for c in json.loads((Path(__file__).parent / 'data/extreme-victory-cards.json').read_text(encoding='utf8')))
 
 
 def active(run):
@@ -20,8 +18,6 @@ def era(run):
 
 
 def allows(run, cid):
-    if cid in OPTIONAL_CARDS:
-        return active(run) and era(run) == 3 and bool(run.get('extreme_victory'))
     return not active(run) or FIRST_ACT.get(cid, 4) <= era(run)
 
 
@@ -34,8 +30,6 @@ def base_minimum(run):
 def pack_act(pid):
     from content import PACK_BY_ID
     pack = PACK_BY_ID[pid]
-    if pid == EXTREME_VICTORY:
-        return 3
     if pid.startswith('DRAFT-'):
         return 1
     if pack.get('region') != 'EN' or not pid.startswith('EN-'):
@@ -61,18 +55,15 @@ def edition(run, pack):
 def openable(pid, act):
     from campaign import card_identity
     from content import PACK_BY_ID
-    pack = edition({'act': act, 'extreme_victory': pid == EXTREME_VICTORY}, PACK_BY_ID[pid])
+    pack = edition({'act': act}, PACK_BY_ID[pid])
     return len({card_identity(cid) for cid in pack['common'] + pack['rare']}) >= 9
 
 
-def native_packs(act, starters=False, extreme_victory=False):
+def native_packs(act, starters=False):
     from content import PACKS
-    ids = [p['id'] for p in PACKS
+    return [p['id'] for p in PACKS
             if not p.get('draft_only') and pack_act(p['id']) == act and openable(p['id'], act)
             and (not starters or not edition({'act': act}, p).get('shop_only'))]
-    if act == 3 and extreme_victory:
-        ids.append(EXTREME_VICTORY)
-    return ids
 
 
 def rotation(run, draft_relic=False):
@@ -82,7 +73,7 @@ def rotation(run, draft_relic=False):
     act = era(run)
     # Draft packs are available through their signature start or the dedicated relic.
     themed = [p['id'] for p in PACKS if p.get('draft_only') and openable(p['id'], act)] if draft_relic else []
-    return list(dict.fromkeys(native_packs(act, extreme_victory=bool(run.get('extreme_victory'))) + run.get('carried_packs', []) + themed))
+    return list(dict.fromkeys(native_packs(act) + run.get('carried_packs', []) + themed))
 
 
 def register_pack(run, pid):
@@ -157,7 +148,7 @@ def choose_starter(run, pid):
 
 def transition_offer(run, rng):
     incoming = era(run) + 1
-    packs = native_packs(incoming, extreme_victory=bool(run.get('extreme_victory')))
+    packs = native_packs(incoming)
     # Rotate the preview once at the boundary. Persist it so returning to the
     # run never rerolls the choices or awards cards twice.
     offered = list(dict.fromkeys(run.get('offered_packs', []) + (run.get('pack_ids', []) if era(run) == 1 else [])))
@@ -165,8 +156,6 @@ def transition_offer(run, rng):
     carryable = [pid for pid in offered if pid in PACK_BY_ID and openable(pid, incoming)]
     anchor = {2: 'EN-LODT', 3: 'EN-TDGS'}[incoming]
     choices = [anchor] if anchor in packs else []
-    if EXTREME_VICTORY in packs:
-        choices.append(EXTREME_VICTORY)
     eligible = [pid for pid in packs if pid not in choices]
     choices += rng.sample(eligible, min(len(eligible), CONFIG['transition_choices'] - len(choices)))
     return dict(incoming=incoming, choices=choices, carryable=carryable,

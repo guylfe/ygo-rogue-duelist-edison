@@ -199,7 +199,6 @@ def install(g):
  def open_pack(name,rng=random,run=None):
   p=PACK_BY_ID.get(name) or next((p for p in PACKS if p['name']==name and p['region']=='EN'),None)
   if not p:raise ValueError('Unknown booster')
-  if p['id']==acts.EXTREME_VICTORY and p['id'] not in acts.rotation(run):raise ValueError('Extreme Victory is available only in Act 3 when enabled for this run.')
   p=acts.edition(run,p)
   # Expanded draft boosters: nine cards even for five-card OCG originals,
   # otherwise four packs cannot reliably make a legal 20-card draft.
@@ -291,7 +290,7 @@ def install(g):
   else:boss_preview.ensure_curses(run,rng,boss_curse_block)
   run['reward_rules']=5
   run['revealed_opponents']=[]
- def new_run(index,rng=random,level=0,variant=0,act_campaign=False,extreme_victory=False):
+ def new_run(index,rng=random,level=0,variant=0,act_campaign=False):
   level=challenge_levels.validate(index,level)
   reload_tuning()
   if index not in PLAYABLE_IDS or index not in storage.profile()['unlocked']:raise ValueError('This duelist is locked.')
@@ -325,7 +324,7 @@ def install(g):
    packs=[]
   r=dict(version=3,shop_rerolls=0,character=index,lp=8000,gold=40,round=0,stage='draft',pool=signatures+sum(packs,[]),selected=list(range(len(signatures))),guaranteed=signatures,packs=packs,artifacts=[],history=[],shop=[],duel=None,curses=[],boss_cursed=[],boss_rules=3,boss_curse=None,purchased=0)
   if act_campaign:
-   r.update(act=1,extreme_victory=bool(extreme_victory),carried_packs=[],opened_packs=[],offered_packs=[])
+   r.update(act=1,carried_packs=[],opened_packs=[],offered_packs=[])
    if normal_start:r.update(stage='starter',starter_offer=starter_offer)
   r['new_cards_from']=0
   r.update(variant=variant,variant_name=char.get('alternate',{}).get('name') if variant else 'Standard',campaign_rules=4,started_at=time.time(),unlocks_earned=[],stats={},pack_ids=pack_ids)

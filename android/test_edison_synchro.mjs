@@ -125,19 +125,6 @@ try {
  console.log('PASS Bonz policy holds Plaguespreader without a worthwhile Synchro');
  duel.destroy();
 
- const tengu='Reborn Tengu', gaia='Gaia Knight, the Force of Earth';
- start([{field:[PLAGUE,tengu],extra:[gaia],deck:[tengu,...Array(12).fill('Battle Ox')]}]);
- const tenguSummon=duel.choices().find(c=>c.code===id(gaia)&&c.label.startsWith('Synchro summon'));
- assert.ok(tenguSummon);
- duel.respond(tenguSummon.response);
- for(let i=0;i<20&&!(zone(0,L.MZONE).includes(gaia)&&zone(0,L.GRAVE).includes(tengu)&&zone(0,L.MZONE).includes(tengu));i++)duel.respond(duel.auto());
- assert.ok(zone(0,L.GRAVE).includes(tengu));
- assert.ok(zone(0,L.MZONE).includes(gaia));
- assert.ok(zone(0,L.MZONE).includes(tengu),'the second Tengu was summoned from the deck');
- assert.deepEqual(duel.errors,[]);
- console.log('PASS Reborn Tengu leaves as material and its replacement resolves in the shared duel core');
- duel.destroy();
-
  function shuffled(deck, seed) {
   const ids = [...deck];
   for (let i=ids.length-1; i>0; i--) {

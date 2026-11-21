@@ -6,8 +6,6 @@ The Edison campaign adds dated TCG cards through April 20, 2010, including [Duel
 
 New solo runs have three nine-duel acts. Act 1 uses the [GOAT checklist](https://www.goatformat.com/cardpool.html) through The Lost Millennium. Act 2 runs through Light of Destruction, and Act 3 runs through Duelist Pack: Kaiba. Between acts, pick three incoming boosters and up to two previously offered boosters to keep in shop rotation. Edit the provisional minimums and pack counts in [the act configuration](data/campaign-acts.json).
 
-**Settings → Gameplay → Act 3 Extreme Victory** applies to new solo runs. It adds the [North American Extreme Victory booster](https://www.yugioh-card.com/en/products/past_products/exvc/) to Act 3. The setting starts off and each run saves its own choice.
-
 A single-player roguelike deckbuilder built on Yu-Gi-Oh! duels: pick a duelist, draft from era-accurate booster packs, collect relics and fight through a campaign of CPU opponents.
 
 - **Original webapp:** [itch.io](https://thronior.itch.io/ygo-rogue). It also runs in desktop browsers.

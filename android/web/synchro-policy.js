@@ -8,7 +8,6 @@ export const PLAGUESPREADER = 33420078;
 const ZOMBIE = 16;
 const WHITE_STONE = 79814787;
 const GOBLIN_ZOMBIE = 63665875;
-const REBORN_TENGU = 10028593;
 const effectValue = new Map([
  ['Stardust Dragon', 400],
  ['Colossal Fighter', 250],
@@ -62,7 +61,6 @@ export function synchroChoice(engine, prompt, smart, own, enemy, strength) {
    if(!smart.effectsEnabled(side))return 0;
    if(c.code===WHITE_STONE&&deckHas(89631139))return 350;
    if(c.code===GOBLIN_ZOMBIE)return 220;
-   if(c.code===REBORN_TENGU&&deckHas(REBORN_TENGU))return 400;
    return 0;
   };
   const lose = materials.reduce((sum, c) => sum + Math.min(7000, smart.expendable(c)) * 0.17 - onSend(c), 0);

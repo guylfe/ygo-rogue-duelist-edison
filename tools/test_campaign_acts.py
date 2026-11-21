@@ -18,21 +18,16 @@ import storage
 
 rng = random.Random(113)
 cid = lambda name: game.BY_NAME[name]['id']
-tengu, cyber, honest, stardust = map(cid, ['Reborn Tengu','Cyber Dragon','Honest','Stardust Dragon'])
-exvc = content.EXTREME_VICTORY_PACK
-official = set(exvc['common'] + exvc['rare'])
-assert len(official) == 100 and tengu in official
-assert not any(game.BY_ID[c]['data']['type'] & 0x800000 for c in official)
+cyber, honest, stardust = map(cid, ['Cyber Dragon','Honest','Stardust Dragon'])
+assert len(acts.ACTS)==3 and 'EN-EXVC' not in content.PACK_BY_ID
+assert 'EN-DPKB' in acts.native_packs(3)
+assert all(content.PACK_BY_ID[p]['date']<='2010-04-20' for p in acts.native_packs(3))
 assert 'EN-TLM' in acts.native_packs(1)
 assert 'EN-CRV' not in acts.native_packs(1) and 'EN-CRV' in acts.native_packs(2)
 assert 'EN-LODT' in acts.native_packs(2)
 assert not acts.allows({'act':1},cyber) and acts.allows({'act':2},cyber)
 assert acts.allows({'act':2},honest) and not acts.allows({'act':2},stardust)
-assert not acts.allows({'act':1,'extreme_victory':True},tengu)
-assert not acts.allows({'act':2,'extreme_victory':True},tengu)
-assert not acts.allows({'act':3,'extreme_victory':False},tengu)
-assert acts.allows({'act':3,'extreme_victory':True},tengu)
-for n in ['Trishula, Dragon of the Ice Barrier','Infernity Launcher','Pot of Duality']:
+for n in ['Trishula, Dragon of the Ice Barrier','Infernity Launcher','Pot of Duality','Reborn Tengu']:
     assert n not in game.BY_NAME,n
 
 def dispatch(action, value=None):
@@ -51,7 +46,6 @@ def verify_stock(run):
 
 with tempfile.TemporaryDirectory() as folder, patch.object(storage,'ROOT',Path(folder)), patch.object(game,'RUNTIME',Path(folder)/'runtime'):
     game.RUNTIME.mkdir()
-    assert storage.settings()['extremeVictory'] is False
     profile=storage.profile()
     profile['relicless_unlocked']=True
     storage.write(storage.ROOT/'profile.json',profile)
@@ -59,12 +53,9 @@ with tempfile.TemporaryDirectory() as folder, patch.object(storage,'ROOT',Path(f
     legacy['_save_slot']=3
     game.save(legacy)
     assert 'act' not in game.load_run(3)
-    dispatch('settings',{'extremeVictory':True})
-    state=dispatch('new',{'character':0,'level':-1,'slot':1})
+    dispatch('new',{'character':0,'level':-1,'slot':1})
     run=mobile_backend.run
-    assert run['extreme_victory'] is True and run['stage']=='starter'
-    dispatch('settings',{'extremeVictory':False})
-    assert game.load_run(1)['extreme_victory'] is True
+    assert run['stage']=='starter' and game.load_run(1)['stage']=='starter'
     supports=list(run['starter_offer'])
     assert all(acts.pack_act(p)==1 for p in supports)
     assert all(acts.allows(run,c) and c!=cyber for ids in run['starter_offer'].values() for c in ids)
@@ -112,12 +103,12 @@ with tempfile.TemporaryDirectory() as folder, patch.object(storage,'ROOT',Path(f
         offer=run['act_transition']
         assert game.load_run(1)['act_transition']==offer
         assert all(acts.pack_act(p)==act+1 for p in offer['choices'])
-        assert ('EN-EXVC' in offer['choices'])==(act==2)
+        assert all(content.PACK_BY_ID[p]['date']<=acts.ACTS[act]['cutoff'] for p in offer['choices'])
         assert ('EN-LODT' in offer['choices'])==(act==1)
         keep=offer['carryable'][:2]
         if act==1:retired=next(p for p in offer['carryable'] if p not in keep)
         if act==2 and retired not in acts.rotation(run):assert retired not in offer['carryable']
-        packs=[offer['choices'][0]]*3 if act==1 else ['EN-EXVC']*3
+        packs=[offer['choices'][0]]*3
         pool,selected=run['pool'][:],run['selected'][:]
         dispatch('act-transition',{'packs':packs,'carry':keep})
         assert run['pool'][:len(pool)]==pool and run['selected']==selected
@@ -129,17 +120,6 @@ with tempfile.TemporaryDirectory() as folder, patch.object(storage,'ROOT',Path(f
     assert turn==27
     assert {entry['act'] for entry in run['timeline']}=={1,2,3}
     assert storage.profile()['wins']==1
-    plain=dispatch('new',{'character':0,'level':-1,'slot':2})['run']
-    assert plain['extreme_victory'] is False
-    assert 'EN-EXVC' not in acts.transition_offer(dict(plain,act=2),rng)['choices']
-    for source in (None,{'act':1,'extreme_victory':True},{'act':2,'extreme_victory':True},{'act':3,'extreme_victory':False}):
-        try:
-            game.open_pack('EN-EXVC',rng,source)
-        except ValueError:
-            pass
-        else:
-            raise AssertionError('Optional booster granted outside its act')
-    assert set(game.open_pack('EN-EXVC',rng,{'act':3,'extreme_victory':True}))<=official
 
     # Fixed decks keep the transition cards in the pool when their normal
     # per-opponent or reward deck replaces the list of selected cards.
@@ -161,4 +141,4 @@ with tempfile.TemporaryDirectory() as folder, patch.object(storage,'ROOT',Path(f
             game.prepare_duel(fixed,rng)
         assert fixed['pool'][-27:]==fixed['act_pack_cards']
         assert all(i<len(fixed['pool'])-27 for i in fixed['selected'])
-print('PASS 27 campaign victories, both saved transitions, targeted opponent rewards, shop and carry gates, minimums, and optional set isolation')
+print('PASS 27 campaign victories, both saved transitions, targeted opponent rewards, shop and carry gates, minimums, and the Edison cutoff')
