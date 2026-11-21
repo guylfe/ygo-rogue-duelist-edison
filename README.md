@@ -11,6 +11,7 @@ Choose from Duel Monsters, GX, and 5D's. The GX and 5D's duelists start with a G
 A single-player roguelike deckbuilder built on Yu-Gi-Oh! duels: pick a duelist, draft from era-accurate booster packs, collect relics and fight through a campaign of CPU opponents.
 
 - **Original webapp:** [itch.io](https://thronior.itch.io/ygo-rogue). It also runs in desktop browsers.
+- **Edison Android playtest:** [Download the signed three-act APK](https://github.com/guylfe/ygo-rogue-duelist-edison/releases/tag/edison-three-acts-android-playtest). It installs as Rogue Duelist: Edison on Android 10 or newer.
 - **Original Android release:** install `YGO-Rogue-Android.apk` from the latest [GitHub release](https://github.com/Thronior/ygo-rogue-duelist/releases) on Android 10 or newer. See [android/README.md](android/README.md) for controls and save behavior.
 
 The game is an unofficial fan project. Yu-Gi-Oh! cards, characters, artwork and music belong to their respective owners. See [assets/CREDITS.md](assets/CREDITS.md).

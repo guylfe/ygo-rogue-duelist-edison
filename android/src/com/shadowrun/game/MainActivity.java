@@ -46,7 +46,6 @@ public final class MainActivity extends Activity {
     }
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
-        UpdateCleanupReceiver.clearInstalled(this);
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
         web = new WebView(this); setContentView(web);
         // A controller's D-pad focusing the view before any touch made Android draw its grey focus highlight over the
@@ -119,7 +118,7 @@ public final class MainActivity extends Activity {
             File[] old=folder.listFiles();
             if(old!=null)for(File f:old)f.delete();
             try(FileOutputStream out=new FileOutputStream(new File(folder,filename))){out.write(bytes);}catch(IOException e){return null;}
-            return ShareImageProvider.uri(filename);
+            return ShareImageProvider.uri(MainActivity.this,filename);
         }
 
         /** Puts the image on the clipboard, since the WebView cannot copy images itself. */
@@ -199,10 +198,6 @@ public final class MainActivity extends Activity {
         /** Main menu close button (Discord, 2026-11-16): saves are already written, so the app just closes. */
         @JavascriptInterface public void quit() {
             runOnUiThread(MainActivity.this::finishAndRemoveTask);
-        }
-
-        @JavascriptInterface public void openUpdate() {
-            runOnUiThread(() -> startActivity(new android.content.Intent(MainActivity.this, UpdateActivity.class)));
         }
 
         private final AtomicFile file = new AtomicFile(new File(getFilesDir(), "campaign.json"));

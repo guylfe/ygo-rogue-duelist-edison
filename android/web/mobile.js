@@ -111,8 +111,6 @@ function cloudSaveNotice(){
   return `<small class="cloud-save-notice" role="status">${esc(paused?"Cloud save is paused: the online servers are at today's limit. Your progress is saved on this device only for now.":'Cloud save could not upload. Your progress is saved on this device; it will retry.')}</small>`}catch{return ''}
 }
 
-import {checkAndroidUpdate,startupAndroidUpdate} from './android-update.js';
-
 import {showNetStatus,hideNetStatus} from './net-status.js';
 import {collectorResponseOverlay,automaticChainResponse,chainWindowAllowed,liveCardFacts,waitForTossStart,mandatoryChainResponse,forcedCancelResponse,revealInPick,relicTriggerIndex} from './duel-presentation.js';
 import {smartContext} from './smart_policy.js';
@@ -1366,7 +1364,7 @@ function renderSettings(){
   display:`<h2>Display</h2><div class="set-row settings-language"><span class="set-text"><b>Language</b><small>Interface and card texts.</small></span><button class="settings-language-button" data-do="language" aria-label="Language" title="Language">${flagSvg(currentLanguage())}<span>${esc(LANGUAGES.find(([code])=>code===currentLanguage())?.[1]||'English')}</span></button></div>${displaySettings()}${duelBackgroundSetting()}${window.ShadowNative?'':settingToggle('Preload Game Assets','Load music, artwork and backgrounds at startup. Sound effects always preload.','data-preload-visuals',preloadVisualPreference()==='all')}`,
   // Saved Data lives in the Devices & App tab (2026-11-06).
   saves:`<h3 class="saved-data-head">Saved Data</h3><p class="muted">Your progress is always saved on this device, and updating the app keeps it.</p><div class="set-group">${cloudSettingsMarkup({enabled:deviceBackup.isEnabled(),...deviceBackup.status()},btn,esc)}</div><details class="set-group"><summary>Other recovery options</summary><label class="set-file">Import a save file <input id="device-recovery-file" type="file" accept=".json,application/json"></label><p class="muted">A save backup exported from the browser version, or a recovery file from the admin.</p></details><details class="set-group settings-danger"><summary>Reset Progress</summary><p>Remove all saved progress on this device.</p>${btn('Delete All Progress','reset-progress','','danger')}${deviceBackup.status().code?`<p>Remove your cloud save from the server. Progress on this device stays.</p>${btn('Delete My Cloud Save','cloud-delete','','danger')}`:''}</details>`,
-  devices:`<h2>Devices &amp; App</h2><p class="muted">Link Devices shares unlocks, achievements, card sleeves and challenge levels between your devices.</p><div class="settings-actions">${window.ShadowNative?.openUpdate?btn('Check for Updates','android-update'):''}${btn('Link Devices','device-sync-open')}</div>`,
+  devices:`<h2>Devices &amp; App</h2><p class="muted">Link Devices shares unlocks, achievements, card sleeves and challenge levels between your devices.</p><div class="settings-actions">${btn('Link Devices','device-sync-open')}</div>`,
   replays:`<h2>Replays &amp; Stats</h2><div class="set-row"><span class="set-text"><b>Duel Replays</b><small>Your latest 100 duels are kept on this device. Uploading them helps improve the CPU: decks, actions and results only, no account details.</small></span>${btn('Upload Replays','upload-replays')}</div><p id="replay-status" role="status" aria-live="polite"></p>${settingToggle('Share Global Statistics','Anonymous totals for Global Stats and Character Stats. No names or save files.','data-usage-stats',statsEnabled())}`,
   about:`<h2>About and Tutorial</h2><div class="settings-actions">${btn('Tutorial Duel','lesson-start')}${btn('How to Play','tutorial')}</div><p class="notice settings-about">Yu-Gi-Oh: Rogue Duelist · A private fan experiment.<br>Original game created and designed by Thronior.<br>Card and character artwork © Konami. Duel rules: Project Ignis / ocgcore-wasm.</p><details class="set-group settings-advanced"><summary>Advanced</summary><label for="cheat-code">Testing Code</label><div class="settings-code"><input id="cheat-code" placeholder="Enter code">${btn('Apply','cheat')}</div></details>`
  };
@@ -2706,14 +2704,6 @@ if(a==='defeated-collector-deck'){showDefeatedCollector(+el.dataset.index);retur
 
  }
 
- if(a==='android-update'){
-
- if(!window.ShadowNative?.openUpdate||el.disabled)return;await persist();ShadowNative.openUpdate();return;
-
- }
-
- if(a==='android-download'){if(state)await persist();ShadowNative.openUpdate();return;}
-
  if(a==='settings'){returnScreen=screen;go('settings');return}if(a==='settings-back'){go(returnScreen);if(screen==='duel')scheduleAI();return}
 
  if(a==='cheat'){const code=document.querySelector('#cheat-code').value;const result=await command('cheat',code);toast(result?.relic?`${result.relic} added to this run.`:result?.cleared?`${result.cleared} has beaten Challenge Level ${result.level}.`:code==='touchgrass'?'All characters cleared Challenge Levels -1 through 6.':code==='alteregos'?'All second variants unlocked.':code==='polymerization'?'All fused relics and their Fusion Materials are shown in Collection.':code==='sleevesforall'?'Every card sleeve can be chosen in Cosmetics. Achievements are unchanged.':'Testing unlock enabled.');return}
@@ -2842,15 +2832,6 @@ async function boot(){try{
  // Interface language: the player's saved choice, else the browser's language (2026-11-08).
  await setLanguage(savedLanguage()||browserLanguage(),{remember:false}).catch(error=>console.warn('Language',error));
  resetLocalizedCards();
-
- // Ask about an update first: it would replace everything loaded below. A slow check must not hold up the game.
- let updatePromptOpen=false;
- const updateCheck=startupAndroidUpdate({native:window.ShadowNative,online:navigator.onLine,prompt:async version=>{
-  while(modal.open)await new Promise(resolve=>modal.addEventListener('close',resolve,{once:true}));
-  updatePromptOpen=true;dialog('Update',`<p>Would you like to update to version ${esc(version)}?</p><div class="actions">${btn('Update','android-download')}${btn('Close','close')}</div>`,false);
-  await new Promise(resolve=>modal.addEventListener('close',resolve,{once:true}));updatePromptOpen=false;
- }});
- await Promise.race([updateCheck,new Promise(resolve=>setTimeout(resolve,2500))]);if(updatePromptOpen)await updateCheck;
 
  document.querySelector('#loading-status').textContent='Step 1 of 6 · Reading game data and saved progress…';{const tip=document.createElement('p');tip.className='loading-tip';tip.textContent=loadingTip();document.querySelector('#loading-status').after(tip)}
 

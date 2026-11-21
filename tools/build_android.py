@@ -1,4 +1,4 @@
-"""Rebuild the offline Android APK from the current desktop campaign and assets."""
+"""Build the offline Edison Android playtest from the shared campaign and assets."""
 from pathlib import Path
 import sys,json,shutil,zipfile,subprocess,hashlib,time,os,sqlite3
 from PIL import Image
@@ -11,6 +11,9 @@ os.environ['TMP']=os.environ['TEMP']=str(BUILD_TEMP)
 import campaign as game,content,approved_relics
 A=ROOT/'android';WEB=A/'web';BUILD=A/'build';DEP=ROOT/'dependencies/android'
 SLEEVE_HEIGHT=307  # shipped card sleeve height (sync below)
+APK_NAME='Rogue-Duelist-Edison-Three-Acts.apk'
+SIGNING_ALIAS='edison-playtest'
+SIGNING_FINGERPRINT='06dee2116b09beb55bc2114dea49463ebcd1afe14150c6fe09c5228c8671dc34'
 
 def copy(source,destination):
  destination.parent.mkdir(parents=True,exist_ok=True)
@@ -171,19 +174,35 @@ def sync():
  print('Synchronized campaign,',len(ids),'card/token images and desktop UI assets.',flush=True)
 
 def build():
- BUILD.mkdir(exist_ok=True);jdk=next((DEP/'jdk').glob('jdk-*'));sdk=DEP/'sdk';bt=sdk/'android-15';platform=sdk/'android-35/android.jar'
- def run(args):subprocess.run([str(x) for x in args],check=True,cwd=A)
+ sdk_root=os.environ.get('ANDROID_HOME') or os.environ.get('ANDROID_SDK_ROOT')
+ if not sdk_root or not os.environ.get('JAVA_HOME'):
+  raise RuntimeError('Set ANDROID_HOME and JAVA_HOME to the Android SDK and JDK 17.')
+ sdk=Path(sdk_root);jdk=Path(os.environ['JAVA_HOME'])
+ bt=sdk/'build-tools/35.0.0';platform=sdk/'platforms/android-35/android.jar'
+ key_path=os.environ.get('EDISON_ANDROID_KEYSTORE')
+ if not key_path or not os.environ.get('EDISON_ANDROID_KEYSTORE_PASSWORD'):
+  raise RuntimeError('Set the fork keystore path and password before signing.')
+ key=Path(key_path).resolve()
+ if not key.is_file() or ROOT in key.parents:
+  raise RuntimeError('The existing Edison signing keystore must be outside the checkout.')
+ required=[platform,bt/'aapt2.exe',bt/'zipalign.exe',bt/'lib/d8.jar',bt/'lib/apksigner.jar',jdk/'bin/javac.exe']
+ if missing:=[str(path) for path in required if not path.is_file()]:
+  raise RuntimeError('Missing Android build dependencies: '+', '.join(missing))
+ BUILD.mkdir(exist_ok=True)
+ def run(args,**kwargs):return subprocess.run([str(x) for x in args],check=True,cwd=A,**kwargs)
  def reset_build_dir(path):
   resolved=path.resolve();build_root=BUILD.resolve()
   if resolved==build_root or build_root not in resolved.parents:raise RuntimeError(f'Refusing to reset non-build directory: {resolved}')
   if resolved.exists():shutil.rmtree(resolved)
   resolved.mkdir(parents=True)
   return resolved
- classes=BUILD/'classes';classes.mkdir(exist_ok=True)
- run([jdk/'bin/javac.exe','-encoding','UTF-8','-source','8','-target','8','-classpath',platform,'-d',classes,*list((A/'src').rglob('*.java'))])
+ classes=reset_build_dir(BUILD/'classes')
+ run([jdk/'bin/javac.exe','-encoding','UTF-8','-source','8','-target','8','-classpath',platform,'-d',classes,*sorted((A/'src').rglob('*.java'))])
  run([jdk/'bin/jar.exe','cf',BUILD/'classes.jar','-C',classes,'.'])
  run([jdk/'bin/java.exe','-cp',bt/'lib/d8.jar','com.android.tools.r8.D8','--min-api','29','--lib',platform,'--output',BUILD,BUILD/'classes.jar'])
- code=int(time.time()//60);version=(ROOT/'VERSION').read_text().strip()
+ code=int(os.environ.get('EDISON_ANDROID_VERSION_CODE',int(time.time()//60)))
+ if not 0<code<=2100000000:raise ValueError('Invalid Android version code.')
+ version=(ROOT/'VERSION').read_text().strip()
  # AAPT2 writes .flat resources into an output directory; passing a .zip file here crashes it.
  compiled_resources=reset_build_dir(BUILD/'compiled-resources')
  run([bt/'aapt2.exe','compile','--dir',A/'res','-o',compiled_resources])
@@ -216,20 +235,25 @@ def build():
  else:
   run([zipalign,'-f','4',unsigned,aligned])
   run([zipalign,'-c','4',aligned])
- key=A/'signing/private-experiment.jks';key.parent.mkdir(exist_ok=True)
- if not key.exists():run([jdk/'bin/keytool.exe','-genkeypair','-keystore',key,'-storepass','shadowrun-private','-keypass','shadowrun-private','-alias','shadowrun','-dname','CN=Shadow Run Private Experiment','-keyalg','RSA','-keysize','2048','-validity','10000'])
  release=ROOT/'releases';release.mkdir(exist_ok=True)
- apk=Path(os.environ.get('ANDROID_APK_OUTPUT',str(release/'YGO-Rogue-Android.apk'))).resolve()
+ apk=Path(os.environ.get('ANDROID_APK_OUTPUT',str(release/APK_NAME))).resolve()
  apk.parent.mkdir(parents=True,exist_ok=True)
- from android_delta import archive_base
- archive_base(apk)
  sign=[jdk/'bin/java.exe','-jar',bt/'lib/apksigner.jar']
- run(sign+['sign','--ks',key,'--ks-key-alias','shadowrun','--ks-pass','pass:shadowrun-private','--out',apk,aligned])
- run(sign+['verify','--verbose',apk])
- run([zipalign,'-c','4',apk])
- with zipfile.ZipFile(apk) as archive:
-  if archive.getinfo('resources.arsc').compress_type!=zipfile.ZIP_STORED:
-   raise RuntimeError('Signed APK resource table is compressed; refusing to publish an un-installable APK')
+ candidate=apk.with_name(apk.stem+'.candidate.apk')
+ try:
+  run(sign+['sign','--ks',key,'--ks-key-alias',SIGNING_ALIAS,'--ks-pass','env:EDISON_ANDROID_KEYSTORE_PASSWORD','--v4-signing-enabled','false','--out',candidate,aligned])
+  verification=run(sign+['verify','--verbose','--print-certs',candidate],capture_output=True,text=True).stdout
+  print(verification,flush=True)
+  certificate=f'Signer #1 certificate SHA-256 digest: {SIGNING_FINGERPRINT}'
+  if 'Number of signers: 1' not in verification.splitlines() or certificate not in verification.splitlines():
+   raise RuntimeError('APK signer differs from the registered Edison playtest key.')
+  run([zipalign,'-c','4',candidate])
+  with zipfile.ZipFile(candidate) as archive:
+   if archive.getinfo('resources.arsc').compress_type!=zipfile.ZIP_STORED:
+    raise RuntimeError('Signed APK resource table is compressed; refusing to publish an un-installable APK')
+  candidate.replace(apk)
+ finally:
+  candidate.unlink(missing_ok=True)
  (release/'build.json').write_text((WEB/'build.json').read_text())
  print('APK:',apk,'-',round(apk.stat().st_size/1024/1024,1),'MiB',flush=True)
 
@@ -237,7 +261,3 @@ if __name__=='__main__':
  sync()
  if '--sync-only' not in sys.argv:
   build()
-  # Releases deploy changed Workers before the clients; say so while the build output is on screen.
-  try:
-   import check_worker_deploys;check_worker_deploys.main()
-  except Exception as error:print('Worker deploy check skipped:',error)

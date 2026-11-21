@@ -13,9 +13,8 @@ import java.io.FileNotFoundException;
 
 /** Serves the image the player copies or shares (cache/share/*.png) read-only to the apps they paste or share it into. */
 public final class ShareImageProvider extends ContentProvider {
-    static final String AUTHORITY = "com.shadowrun.game.share";
     static File directory(Context context) { return new File(context.getCacheDir(), "share"); }
-    static Uri uri(String filename) { return new Uri.Builder().scheme("content").authority(AUTHORITY).appendPath(filename).build(); }
+    static Uri uri(Context context, String filename) { return new Uri.Builder().scheme("content").authority(context.getPackageName() + ".share").appendPath(filename).build(); }
 
     private File file(Uri uri) throws FileNotFoundException {
         String name = uri.getLastPathSegment();
