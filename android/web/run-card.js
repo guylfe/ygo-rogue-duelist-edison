@@ -1,3 +1,4 @@
+import {isExtraDeck} from './deck-minimum.js';
 // Shareable end-of-run tablet, drawn on canvas so the on-screen card and the copied PNG are identical.
 // Stone and crack textures: Poly Haven "Grey Plaster 02" and "Cracked Concrete" (CC0), see assets/CREDITS.md.
 import {replayVersion} from './replay-version.js';
@@ -390,7 +391,7 @@ export function runCardData(r,{content,character,card,cardImage,relicImage,asset
   else if(d.tag)d.eyebrow='TAG RUN';
   d.title=r.secret_challenge?'SECRET CHALLENGE CLEARED':r.encore_won?`${finalChallengeName(r)} DEFEATED`:level<0?'RELICLESS RUN CLEARED':`CHALLENGE LEVEL ${level} CLEARED`;
   // Card artwork is already cached by the startup preload, so the deck uses the same images as the rest of the game.
-  const ids=(r.selected||[]).map(i=>r.pool?.[i]).filter(id=>card(id)),extra=id=>card(id).data.type&64;
+  const ids=(r.selected||[]).map(i=>r.pool?.[i]).filter(id=>card(id)),extra=id=>isExtraDeck(card(id));
   d.deck={main:deckOrder(ids.filter(id=>!extra(id)),card).map(cardImage),extra:deckOrder(ids.filter(extra),card).map(cardImage)};
   d.label=`${d.tag?`${d.name} and ${d.tag.name} won the Tag run`:`${d.name} won the run`} at Challenge Level ${level} with ${d.victories} of ${runLength} victories: ${d.title.toLowerCase()}.`
  }else{

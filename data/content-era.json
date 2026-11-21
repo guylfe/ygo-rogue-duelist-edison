@@ -131,11 +131,21 @@
     99414168
   ],
   "excluded_pack_ids": [
-    "EN-TLM",
     "JP-CRV",
     "JP-PP8",
     "JP-TLM"
   ],
+  "edison_tcg": {
+    "inclusive_cutoff": "2010-04-20",
+    "cards": "edison-cards.json",
+    "packs": "edison-packs.json",
+    "include_duelist_pack_kaiba": true,
+    "sources": [
+      "https://www.db.yugioh-card.com/yugiohdb/card_list.action?request_locale=en",
+      "https://www.yugioh-card.com/en/products/past_products/dp_kaiba/",
+      "https://github.com/iconmaster5326/YGOJSON"
+    ]
+  },
   "retained_cpu_card_exceptions": [
     9637706,
     42664989,

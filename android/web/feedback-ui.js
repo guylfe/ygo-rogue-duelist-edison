@@ -1,3 +1,4 @@
+import {isExtraDeck} from './deck-minimum.js';
 export const monsterTypes=['Warrior','Spellcaster','Fairy','Fiend','Zombie','Machine','Aqua','Pyro','Rock','Winged Beast','Plant','Insect','Thunder','Dragon','Beast','Beast-Warrior','Dinosaur','Fish','Sea Serpent','Reptile','Psychic','Divine-Beast','Creator God','Wyrm','Cyberse','Illusion'];
 
 export const attributes={1:'EARTH',2:'WATER',4:'FIRE',8:'WIND',16:'LIGHT',32:'DARK',64:'DIVINE'};
@@ -14,7 +15,7 @@ export function effectiveAttributes(c,run,index){
  return base?[base]:[];
 }
 
-export function frameLevelName(a,b){const frame=c=>{const t=c.data.type;return t&1?t&64?3:t&128?2:t&16?0:1:t&2?4:5};return frame(a)-frame(b)||(b.level||0)-(a.level||0)||a.name.localeCompare(b.name)||a.id-b.id;}
+export function frameLevelName(a,b){const frame=c=>{const t=c.data.type;return t&1?isExtraDeck(c)?3:t&128?2:t&16?0:1:t&2?4:5};return frame(a)-frame(b)||(b.level||0)-(a.level||0)||a.name.localeCompare(b.name)||a.id-b.id;}
 
 export function effectiveAttribute(c,run,index){
  return effectiveAttributes(c,run,index).join(' / ');

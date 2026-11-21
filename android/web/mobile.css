@@ -3482,6 +3482,7 @@ dialog:has(.lesson-done){overflow:hidden}
  :root[data-duel-theme="pixel-art"] .duel [data-frame^="normal"]{--pix-card:#f4c84a}
  :root[data-duel-theme="pixel-art"] .duel [data-frame^="ritual"]{--pix-card:#3f78d8}
  :root[data-duel-theme="pixel-art"] .duel [data-frame^="fusion"]{--pix-card:#8f52c8}
+ :root[data-duel-theme="pixel-art"] .duel [data-frame^="synchro"]{--pix-card:#e5e6e9}
  :root[data-duel-theme="pixel-art"] .duel [data-frame^="spell"]{--pix-card:#2fa86a}
  :root[data-duel-theme="pixel-art"] .duel [data-frame^="trap"]{--pix-card:#cc3f93}
  :root[data-duel-theme="pixel-art"] .duel [data-frame^="token"]{--pix-card:#8b909c}

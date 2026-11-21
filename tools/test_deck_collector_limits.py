@@ -4,8 +4,8 @@ from collections import Counter
 from pathlib import Path
 from unittest.mock import patch
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
-import deck_files
-cards={c['id']:c for c in json.loads((ROOT/'data/era-cards.json').read_text(encoding='utf8'))}
+import deck_files,content
+cards={c['id']:c for c in content.era_cards()}
 limits=json.loads((ROOT/'data/collector-banlist.json').read_text(encoding='utf8'))['names']
 def verify(d,label,rules={}):
  counts=Counter(cards[c]['name']for s in ('main','extra','side')for c in d.get(s,[]))
@@ -35,7 +35,7 @@ with tempfile.TemporaryDirectory(prefix='deck-limits-',dir=Path.cwd()) as temp:
  assert Path(temp).resolve().is_relative_to(Path.cwd().resolve())
  base=Path(temp);folder=base/'decks';folder.mkdir();(folder/'index.json').write_text('{}');(base/'card-aliases.json').write_text('{}')
  fixture=[{'id':i,'name':'Filler '+str(i)}for i in range(1,21)]+[{'id':30,'name':'Limited'},{'id':31,'name':'Limited'},{'id':32,'name':'Forbidden'}]
- (base/'era-cards.json').write_text(json.dumps(fixture));(base/'collector-banlist.json').write_text(json.dumps({'names':{'Limited':1,'Forbidden':0}}))
+ (base/'era-cards.json').write_text(json.dumps(fixture));(base/'edison-cards.json').write_text('[]');(base/'collector-banlist.json').write_text(json.dumps({'names':{'Limited':1,'Forbidden':0}}))
  def put(extra): (folder/'test.ydk').write_text('#main\n'+'\n'.join(map(str,range(1,21)))+'\n'+extra+'\n')
  with patch.object(deck_files,'ROOT',folder):
   put('30');deck_files.read('test',{})

@@ -1,3 +1,4 @@
+import {isExtraDeck} from './deck-minimum.js';
 import {clearDuelEmotes} from './duel-emotes.js';
 import {roomCodeControl} from './room-code.js';
 import {draftCharacterSelect,draftBlocked} from './draft-character-select.js';
@@ -117,13 +118,13 @@ export class DraftUI extends CollectorUI {
  destroy(){super.destroy();this.closePacks?.();this.closePacks=null;if(this.onResize)window.removeEventListener("resize",this.onResize);}
  // Deck as pool indices (the pool can hold several copies of one card); the saved deck stays card IDs.
  pickedFromDeck(){const deck=this.duelist.draftDeck||this.duelist.deck||{main:[],extra:[]},used=new Set(),picked=[];for(const id of [...(deck.main||[]),...(deck.extra||[])]){const i=this.duelist.pool.findIndex((x,k)=>x===id&&!used.has(k));if(i>=0){used.add(i);picked.push(i)}}return picked;}
- deckFromPicked(){const pool=this.duelist.pool,card=id=>this.cardById(id),ids=this.picked.map(i=>pool[i]);return {main:ids.filter(id=>!(card(id)?.data.type&64)),side:[],extra:ids.filter(id=>card(id)?.data.type&64)};}
+ deckFromPicked(){const pool=this.duelist.pool,card=id=>this.cardById(id),ids=this.picked.map(i=>pool[i]);return {main:ids.filter(id=>!isExtraDeck(card(id))),side:[],extra:ids.filter(id=>isExtraDeck(card(id)))};}
  cardById(id){this.cardIndex??=new Map(this.content.cards.map(c=>[c.id,c]));return this.cardIndex.get(id);}
  deckRun(){const pool=this.duelist.pool,r=this.room,fresh=r?.loop&&r.round>0?pool.length-(this.duelist.packs||[]).flat().length:pool.length;return {pool,artifacts:this.duelRelics(r||{}),curses:[],challenge_level:0,new_cards_from:fresh};}
  checkDeckSplit(){if(updateDeckSplit(this,this.root.querySelector('.draft-online-scroll')))this.renderEditor();}
  renderEditor(){
   const pool=this.duelist.pool,picked=this.picked||=this.pickedFromDeck(),run=this.deckRun(),info=this.content.artifactInfo,lookup=id=>this.cardById(id),min=this.minDeck();
-  const main=picked.filter(i=>!(lookup(pool[i])?.data.type&64)).length,extra=picked.length-main,ok=this.validateDeck(this.deckFromPicked(),pool,this.content.cards).length===0;
+  const main=picked.filter(i=>!isExtraDeck(lookup(pool[i]))).length,extra=picked.length-main,ok=this.validateDeck(this.deckFromPicked(),pool,this.content.cards).length===0;
   const order=deckOrder(this,{pool,selected:picked,lookup,run,info,searchKey:DECK_SEARCH}),inDeck=new Set(picked);
   const cardMarkup=i=>deckCardButton({id:pool[i],index:i,card:lookup(pool[i]),run,info,image:this.image,selected:inDeck.has(i),attrs:'data-collector="toggle"'});
   const scroller=this.root.querySelector('.draft-online-scroll'),keep=scroller?saveDeckScroll(scroller):null;
@@ -134,10 +135,10 @@ export class DraftUI extends CollectorUI {
  }
  toggleCard(i){const pool=this.duelist.pool,lookup=id=>this.cardById(id),card=lookup(pool[i]);if(!card)return;const at=this.picked.indexOf(i);
   if(at>=0)this.picked.splice(at,1);
-  else{const ids=this.picked.map(k=>lookup(pool[k])),fusion=card.data.type&64;
+  else{const ids=this.picked.map(k=>lookup(pool[k])),extra=isExtraDeck(card);
    if(!isRandomId(card.id)&&ids.filter(c=>c?.name===card.name&&!isRandomId(c.id)).length>=3)throw Error(`Maximum three copies of ${card.name}.`);
-   if(fusion&&ids.filter(c=>c?.data.type&64).length>=15)throw Error('Fusion Deck may contain 0–15 cards.');
-   if(!fusion&&ids.filter(c=>!(c?.data.type&64)).length>=60)throw Error('Main Deck may contain up to 60 cards.');
+   if(extra&&ids.filter(isExtraDeck).length>=15)throw Error('Extra Deck may contain 0–15 cards.');
+   if(!extra&&ids.filter(c=>!isExtraDeck(c)).length>=60)throw Error('Main Deck may contain up to 60 cards.');
    this.picked.push(i);}
   this.saveDeck();}
  saveDeck(){this.draft=this.deckFromPicked();this.duelist.draftDeck=structuredClone(this.draft);this.save();}

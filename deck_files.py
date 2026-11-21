@@ -1,7 +1,7 @@
 """EDOPro-editable authoritative opponent deck files. Re-read before each duel."""
 from pathlib import Path
 import json
-from collections import Counter
+from collections import ChainMap, Counter
 ROOT=Path(__file__).parent/'data/decks'
 _ERA_CARDS={}
 def _era_cards(path):
@@ -24,7 +24,7 @@ def read(name,fallback):
    result[section].append(int(line))
  if len(result['main'])<20:raise ValueError(str(p)+' needs at least 20 main-deck cards.')
  # Invalid edits should stop before launching the core, rather than strand a run.
- cards=_era_cards(ROOT.parent/'era-cards.json')
+ cards=ChainMap(*(_era_cards(ROOT.parent/name) for name in ('era-cards.json','edison-cards.json')))
  aliases={int(k):v for k,v in json.loads((ROOT.parent/'card-aliases.json').read_text(encoding='utf8')).items()}
  all_cards=result['main']+result['extra']+result['side']
  missing=[c for c in all_cards if aliases.get(c,c) not in cards]

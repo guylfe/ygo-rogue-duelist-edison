@@ -1,6 +1,7 @@
 import catalog from './draft-catalog.json' with {type:'json'};
 import draftRelics from './draft-relics.json' with {type:'json'};
 import cards from './collector-cards.json' with {type:'json'};
+import {isExtraDeck} from '../../android/web/deck-minimum.js';
 const byId=new Map(cards.map(c=>[c.id,c]));
 const pick=(xs,random)=>xs[Math.floor(random()*xs.length)];
 const weighted=(xs,random)=>{let value=random()*xs.reduce((n,id)=>n+(catalog.weights?.[id]??1),0);for(const id of xs){value-=catalog.weights?.[id]??1;if(value<0)return id;}return xs.at(-1);};
@@ -20,8 +21,8 @@ export function openBooster(id,random=secureRandom){
  const basics=[...pack.common,...(pack.rare||[])].filter(id=>byId.get(id)?.data.type&16);for(let i=0;i<3;i++)draw(basics);
  while(out.length<9)if(!draw(pack.common)&&!draw([...pack.common,...(pack.rare||[])]))throw Error('Booster has too few unique cards.');return out;
 }
-// Copies a Main Deck can use: up to three per name, Fusion Monsters excluded.
-export function buildable(pool){const counts=new Map();for(const id of pool){const card=byId.get(id);if(card&&!(card.data.type&64))counts.set(card.name,(counts.get(card.name)||0)+1);}return [...counts.values()].reduce((n,count)=>n+Math.min(count,3),0);}
+// Copies a Main Deck can use: up to three per name, excluding Extra Deck monsters.
+export function buildable(pool){const counts=new Map();for(const id of pool){const card=byId.get(id);if(card&&!isExtraDeck(card))counts.set(card.name,(counts.get(card.name)||0)+1);}return [...counts.values()].reduce((n,count)=>n+Math.min(count,3),0);}
 // loop: the draft-loop opening (each starting booster once, 20-card minimum). Without it, the older best-of-three
 // opening (every starting booster twice, 40-card minimum) for clients from before the loop.
 // Random Pack (user, 2026-11-16): randomized cards exist only on the players' devices. The Worker deals a seed per

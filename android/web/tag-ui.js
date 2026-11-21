@@ -6,7 +6,7 @@ import {bountyBanner} from './bounty-banner.js';
 import {deckOrder,deckToolbar,deckCardsArea,wireDeckToolbar,resetDeckFilters,updateDeckSplit} from './deck-editor-view.js';
 import {revealPrice} from './jar-relics.js';
 
-import {deckMinimum,fixedDeck,overCopyLimit} from './deck-minimum.js';
+import {deckMinimum,fixedDeck,overCopyLimit,isExtraDeck} from './deck-minimum.js';
 import {tapIntent,applyTaps,steadyTap} from './deck-stacks.js';
 
 import {playUISound,playRerollSound} from './ui-sounds.js';
@@ -232,7 +232,7 @@ export class TagUI {
 
   const locked=v.ready[v.seat],fixed=fixedDeck(r,c);
 
-  const mainCount=r.selected.filter(i=>!(this.cardById(r.pool[i])?.data.type&64)).length,validSize=fixed||mainCount>=(deckMinimum(r,this.content.characters[r.character]))&&mainCount<=60;
+  const mainCount=r.selected.filter(i=>!isExtraDeck(this.cardById(r.pool[i]))).length,validSize=fixed||mainCount>=(deckMinimum(r,this.content.characters[r.character]))&&mainCount<=60;
 
   const lockedCount=v.ready.filter(Boolean).length;
 
@@ -665,7 +665,7 @@ export class TagUI {
    // The swords lock in at once: the deck and this opponent. On the locked opponent they unlock; on another, they move the lock.
    else if(action==='lock-opponent'){
 
-    const v=this.view,run=v.run,c=this.content.characters[run.character],main=run.selected.filter(i=>!(this.cardById(run.pool[i])?.data.type&64)).length;
+    const v=this.view,run=v.run,c=this.content.characters[run.character],main=run.selected.filter(i=>!isExtraDeck(this.cardById(run.pool[i]))).length;
 
     if(v.ready[v.seat]&&v.opponents[v.seat]===id)await this.session.request('unready');
 

@@ -1,7 +1,14 @@
 """Offline campaign content. Published WCT 2004 opponent lists."""
 import json
 from pathlib import Path
-PACKS=json.loads((Path(__file__).parent/'data/packs.json').read_text(encoding='utf8'))
+DATA = Path(__file__).parent / 'data'
+
+def era_cards():
+ return [card for name in ('era-cards.json','edison-cards.json')
+         for card in json.loads((DATA/name).read_text(encoding='utf8'))]
+
+PACKS=[pack for name in ('packs.json','edison-packs.json')
+       for pack in json.loads((DATA/name).read_text(encoding='utf8'))]
 import custom_cards
 custom_cards.install_packs(PACKS)
 from pack_merges import merge_pack_catalog
@@ -22,7 +29,7 @@ PACK_BY_ID.update({old:PACK_BY_ID[new] for old,new in PACK_ALIASES.items()})
 # and one printing per card (card-aliases.json) keeps alternate arts from doubling its odds.
 def _fill_millennium_puzzles():
  root=Path(__file__).parent
- rows=json.loads((root/'data/era-cards.json').read_text(encoding='utf8'))
+ rows=era_cards()
  era={c['id']:c['type'] for c in rows};names={c['id']:c['name'] for c in rows}
  aliases={int(k):v for k,v in json.loads((root/'data/card-aliases.json').read_text(encoding='utf8')).items()}
  kinds={'WC4-20':'Spell','WC4-21':'Trap','WC4-22':'Monster','WC4-23':None}

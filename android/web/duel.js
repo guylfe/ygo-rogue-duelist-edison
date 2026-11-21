@@ -1,3 +1,4 @@
+import {isSynchro,synchroChoice,synchroMaterialResponse} from './synchro-policy.js';
 import {rankedDecision} from './cpu-ranking.js';
 import {tributeSelection} from './cpu-card-plans.js';
 import {trackEffectTargets} from './selection-feedback.js';
@@ -30,7 +31,7 @@ export class MobileDuel extends DuelEngine {
   if(m.type===M.SWAP){const a=key(m.card1),b=key(m.card2),ca=memory.get(a),cb=memory.get(b);memory.delete(a);memory.delete(b);if(ca)memory.set(b,ca);if(cb)memory.set(a,cb);}
   if(m.type===M.SHUFFLE_SET_CARD)for(const c of m.cards||[]){memory.delete(key(c.from));memory.delete(key(c.to));}
  }
- start(...args){this.finalCountdowns=[];this.normalSummonTurn=null;this.ordealKnown=[[],[]];this.misprintedHandStats=[new Map(),new Map()];this.misprintedHands=[new Set(),new Set()];this.cancelledAttacks=new Map();this.tributeSets=new Set();this.releasedForSet=[0,0];this.piercingTurn={};this.piercingCards=new Map();this.feedbackStats=new Map();this.orDealGuesses=0;this.reasoningSeed=Number(args[5])>>>0;this.questionGuesses=0;this.summoningPlayer=null;this.expertTarget=null;this.attackLocks=new Map();this.cardTargets=new Map();this.limiterDoom=new Set();this.cardTurnCounts=new Map();this.declaredRaces=new Map();this.rebornMonsters=new Map();this.resolvingChain=0;this.fieldKnowledge=new FieldKnowledge();this.exodiaPlan=[false,false];this.fieldToGraveTurn=[0,0];this.aiModifiers=JSON.parse(String(args[8]||'').match(/^-- SHADOW_RUN_AI (.+)$/m)?.[1]||'{}');this.fusionSupport={};this.fusionMaterialCandidates=[];this.fusionMaterialCandidateKeys=new Set();this.pendingSummons=[];this.events=[];this.visuals=[];this.selectionHint=null;this.peak={peak_attack:0,peak_defense:0,peak_field:0,turns:0};this.sleeveMetrics=null;this.effect=null;this.materialSubject=null;this.attacker=null;this.chainDepth=0;this.battleOpen=false;this.chainedSinceAttack=false;this.activeChain=[];this.effectTargets=[];this.battleProtected=[false,false];this.attackCard=null;this.attackTarget=null;this.inDamageStep=false;this.lastSummoned=[];this.revealedHands=[{},{}];this.resolutionSource=0;return super.start(...args)}
+ start(...args){this.synchroPlan=null;this.finalCountdowns=[];this.normalSummonTurn=null;this.ordealKnown=[[],[]];this.misprintedHandStats=[new Map(),new Map()];this.misprintedHands=[new Set(),new Set()];this.cancelledAttacks=new Map();this.tributeSets=new Set();this.releasedForSet=[0,0];this.piercingTurn={};this.piercingCards=new Map();this.feedbackStats=new Map();this.orDealGuesses=0;this.reasoningSeed=Number(args[5])>>>0;this.questionGuesses=0;this.summoningPlayer=null;this.expertTarget=null;this.attackLocks=new Map();this.cardTargets=new Map();this.limiterDoom=new Set();this.cardTurnCounts=new Map();this.declaredRaces=new Map();this.rebornMonsters=new Map();this.resolvingChain=0;this.fieldKnowledge=new FieldKnowledge();this.exodiaPlan=[false,false];this.fieldToGraveTurn=[0,0];this.aiModifiers=JSON.parse(String(args[8]||'').match(/^-- SHADOW_RUN_AI (.+)$/m)?.[1]||'{}');this.fusionSupport={};this.fusionMaterialCandidates=[];this.fusionMaterialCandidateKeys=new Set();this.pendingSummons=[];this.events=[];this.visuals=[];this.selectionHint=null;this.peak={peak_attack:0,peak_defense:0,peak_field:0,turns:0};this.sleeveMetrics=null;this.effect=null;this.materialSubject=null;this.attacker=null;this.chainDepth=0;this.battleOpen=false;this.chainedSinceAttack=false;this.activeChain=[];this.effectTargets=[];this.battleProtected=[false,false];this.attackCard=null;this.attackTarget=null;this.inDamageStep=false;this.lastSummoned=[];this.revealedHands=[{},{}];this.resolutionSource=0;return super.start(...args)}
  // Ordeal of a Traveler shows its controller's random hand card to the attacker, and the hand is shuffled after.
  // ordealKnown[side] holds codes of distinct cards in that side's hand the other side has seen this way. Cards that
  // join the hand only add unknowns; a card leaving face-up drops its code; one leaving unseen (Set, to the deck,
@@ -329,6 +330,8 @@ for(const side of s.players)for(const c of [...side.monsters,...side.spells])if(
   const p=m.player,own=this.query(p,L.MZONE).filter(Boolean),enemy=this.query(1-p,L.MZONE).filter(Boolean);
   const stat=c=>this.data[c.code]||{},live=c=>c.location===L.MZONE?this.query(c.controller??p,L.MZONE)[c.sequence]:null,swapOriginalStats=side=>[0,1].some(owner=>this.aiModifiers?.activeRelics?.[owner]?.includes('sword_and_shield'))||((this.aiModifiers?.activeCurses||[]).includes('mirror_stats')&&((this.aiModifiers?.challengeLevel??0)<2||side===0)),atk=c=>{const current=live(c);if(current?.attack!==undefined)return current.attack;const value=c.attack??stat(c).attack??0;return (stat(c).type&1)&&c.location!==L.MZONE&&swapOriginalStats(c.controller??p)?(c.defense??stat(c).defense??value):value},def=c=>{const current=live(c);if(current?.defense!==undefined)return current.defense;const value=c.defense??stat(c).defense??0;return (stat(c).type&1)&&c.location!==L.MZONE&&swapOriginalStats(c.controller??p)?(c.attack??stat(c).attack??value):value};
   const smart=smartContext(this,p,L,m);
+  const material=synchroMaterialResponse(this,m,smart);
+  if(material)return material;
   // Gambler of Legend's 1 head: destroy our cheapest card (smart.ownLossPick), before the generic selection below.
   if(m.type===M.SELECT_CARD&&this.name(this.resolvingChain)==='Gambler of Legend'&&m.selects.length&&m.selects.every(c=>c.controller===p&&(c.location===L.MZONE||c.location===L.SZONE))){const source=this.activeChain?.find(l=>l.code===this.resolvingChain&&(l.controller??l.player)===p);return {type:R.SELECT_CARD,indicies:[smart.ownLossPick(m.selects.map(c=>({...c,...(this.query(p,c.location)[c.sequence]||{})})),source)]}}
   const visible=c=>!!(c.position&5),strength=c=>visible(c)?(c.position&1?atk(c):def(c)):smart.hiddenDefense(c);
@@ -462,7 +465,9 @@ for(const side of s.players)for(const c of [...side.monsters,...side.spells])if(
     return smart.cyberJarFlipUseful(this.query(p,L.HAND).filter(Boolean).length-1-spellSets)===true;
    });
    if(cyberJarFlip>=0)return idle(I.SELECT_POS_CHANGE,cyberJarFlip);
-   const specialCandidates=ranked(m.special_summons).filter(x=>smart.specialOk(x.c)!==false);
+   const synchro=synchroChoice(this,m,smart,own,enemy,strength);
+   if(synchro?.kind==='special'){this.synchroPlan=synchro;return idle(I.SELECT_SPECIAL_SUMMON,synchro.index);}
+   const specialCandidates=ranked(m.special_summons).filter(x=>!(x.c.location===L.EXTRA&&isSynchro(stat(x.c)))&&smart.specialOk(x.c)!==false);
    // Megarock Dragon's printed database ATK is a placeholder; compare its
    // graveyard-scaled value before allowing a lower-power special summon to
    // take priority just because the raw card data sorts it last.
@@ -480,6 +485,7 @@ for(const side of s.players)for(const c of [...side.monsters,...side.spells])if(
     // A face-up Flip monster switched to Attack triggers nothing: judge it as a plain attacker (flag, 2026-11-05).
     if(field&&visible(field)&&(stat(c).type&0x200000))return !!(!(field.position&1)&&m.to_bp&&!smart.attackBlocked(field,p)&&(atk(field)>threat||smart.clearedLane(field)||smart.attackOpportunity(field)));
     const useful=name==='Magician of Faith'?this.query(p,L.GRAVE).some(c=>stat(c).type&2):name==='Mask of Darkness'?this.query(p,L.GRAVE).some(c=>stat(c).type&4):['Man-Eater Bug','Penguin Soldier'].includes(name)?enemy.length>0:name==='Morphing Jar'?(this.query(p,L.HAND).length<3&&this.query(p,L.DECK).length>5):false;const extra=smart.flipUseful(name,field);return field&&!(field.position&1)&&(extra===true||smart.saferPosition(field)!==false)&&extra!==false&&(useful||extra===true||m.to_bp&&!smart.attackBlocked(field,p)&&(atk(field)>threat||smart.clearedLane(field)||smart.attackOpportunity(field)))});if(flip>=0)return idle(I.SELECT_POS_CHANGE,flip);
+   if(synchro?.kind==='normal')return idle(I.SELECT_SUMMON,synchro.index);
    // Compare all legal defenders before choosing an individually safer ATK summon.
    // A different monster in DEF may be the only line that survives piercing.
    if(this.cpuReviewRules?.survivalGuard!==false&&enemy.filter(c=>visible(c)&&(c.position&1)).reduce((n,c)=>n+atk(c),0)>=this.lp[p]){
@@ -677,6 +683,12 @@ for(const side of s.players)for(const c of [...side.monsters,...side.spells])if(
   if(m.type===M.SELECT_YESNO&&this.phase===2&&m.description!==undefined&&smart.lethalUpkeep(Number(BigInt(m.description)>>20n)))return {type:R.SELECT_YESNO,yes:false};
   if(m.type===M.SELECT_YESNO&&this.phase===2&&m.description!==undefined&&smart.releaseUpkeep(Number(BigInt(m.description)>>20n)))return {type:R.SELECT_YESNO,yes:false};
   if(m.type===M.SELECT_EFFECTYN&&this.name(m.code)==='Second Coin Toss'){const yes=smart.coinRedo(this.lastCoin,this.coinCall?.player===p?this.coinCall:null);if(yes)this.coinRedoTurn={...this.coinRedoTurn,[p]:this.turn};return {type:R.SELECT_EFFECTYN,yes}}
+  if(m.type===M.SELECT_EFFECTYN&&this.name(m.code)==='Black Rose Dragon'&&Number(m.description)%16===0&&Number(m.description)!==0){
+   const back=side=>this.query(side,L.SZONE).filter(Boolean).length;
+   const danger=enemy.some(c=>visible(c)&&strength(c)>2400);
+   const loses=own.length+back(p),gains=enemy.length+back(1-p);
+   return {type:R.SELECT_EFFECTYN,yes:gains>loses||danger&&gains>=loses};
+  }
   if(m.type===M.SELECT_EFFECTYN){if(this.effectYesRepeats(m))return {type:R.SELECT_EFFECTYN,yes:false};const value=smart.activation(m,true);return {type:R.SELECT_EFFECTYN,yes:value===null||value>=0}}
   if(m.type===M.SELECT_POSITION){const _forecast={code:m.code,controller:p,location:L.HAND},_pos=smart.position(this.name(m.code),_forecast)??smart.betterPosition(_forecast);const attack=_pos!==null?_pos:(this.cpuReviewRules?.positionForecast===false?(this.data[m.code]?.attack||0):smart.projectedAttack({code:m.code,controller:p,location:L.HAND}))>threat;const flip=_pos!==true&&!!(this.data[m.code]?.type&0x200000)&&(this.data[m.code]?.attack||0)<1000;const order=flip?[8,4,1,2]:attack?[1,4,8,2]:[4,8,1,2];return {type:R.SELECT_POSITION,position:order.find(x=>m.positions&x)}}
   return super.auto(m);

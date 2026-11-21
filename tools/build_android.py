@@ -37,7 +37,7 @@ def sync():
  shared.extend(['randomizer.py','random_cards.py','reward_slots.py','boss_selection.py','boss_preview.py','progress_sync.py','golden_cards.py','relic_affinity.py','card_rarity.py','custom_cards.py','pack_merges.py','sleeve_progress.py'])
  files={name:(ROOT/name).read_text(encoding='utf8') for name in shared}
  files['mobile_backend.py']=(A/'mobile_backend.py').read_text(encoding='utf8')
- # data/cards.json is not read by the game: campaign_expansion loads the pool from data/era-cards.json.
+ # data/cards.json is the historical input; content.era_cards() loads the campaign catalogue.
  for p in (ROOT/'data').glob('*.json'):
   if p.name!='cards.json':files['data/'+p.name]=p.read_text(encoding='utf8')
  for p in (ROOT/'data/decks').glob('*'):files['data/decks/'+p.name]=p.read_text(encoding='utf8')
@@ -93,6 +93,8 @@ def sync():
  # Randomized cards (random_cards.py): every one runs on this shared block library.
  scripts['randomizer.lua']=(ROOT/'data/randomizer/randomizer.lua').read_text(encoding='utf8')
  scripts['c24096228.lua']=(ROOT/'runtime/script/official/c24096228.lua').read_text(encoding='utf8')
+ # Project Ignis stores this card's supported errata under pre-errata at its usual passcode.
+ scripts['c88264978.lua']=(ROOT/'runtime/script/pre-errata/c88264978.lua').read_text(encoding='utf8')
  # 29389368 Nutrient Z: scales its 2000 check by the run's battle damage changes (SR_BATTLE_SCALE, passives.py).
  # 17078030 Wall of Revealing Light: picks large LP amounts in two steps (the core's number prompt holds 255 choices).
  for card in (78637313,53119267,93599951,85562745,94585852,49511705,29389368,17078030):

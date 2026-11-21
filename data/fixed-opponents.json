@@ -50,7 +50,8 @@
         "character": 1,
         "name": "Seto Kaiba",
         "tier": 3,
-        "deck": "seto-kaiba-tier-3",
+        "deck": "seto-kaiba-tier-3-edison",
+        "adaptation": "Edison fork Synchro package. Original list: seto-kaiba-tier-3.ydk.",
         "source": "User-provided list plus requested monster filler; 24 monsters / 24 Spells and Traps (2026-09-24)",
         "fixed": true
       }
@@ -255,7 +256,8 @@
         "character": 9,
         "name": "Bonz",
         "tier": 2,
-        "deck": "bonz-tier-2",
+        "deck": "bonz-tier-2-edison",
+        "adaptation": "Edison fork Synchro package. Original list: bonz-tier-2.ydk.",
         "source": "User-provided screenshot with requested Regenerating Mummy substitution and Monster Reborn for crossed-out Premature Burial (2026-09-24)",
         "fixed": true
       },

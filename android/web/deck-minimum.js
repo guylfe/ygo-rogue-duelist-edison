@@ -1,4 +1,6 @@
 // Keep the campaign display in step with approved_relics.minimum.
+export const EXTRA_DECK_TYPES = 0x40 | 0x2000; // Fusion or Synchro
+export const isExtraDeck = card => !!(card?.data?.type & EXTRA_DECK_TYPES);
 const copies=(run,key)=>run.challenge_level===-1?0:(run.artifacts||[]).filter(k=>k===key).length+(run.mirror_copy===key?1:0);
 // Keep in step with content.fixed_deck: the Deck Assembler variant edits his own deck.
 export function fixedDeck(run,character={}){return !!(character.copycat||character.engine_deck&&!run?.variant)}

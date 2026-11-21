@@ -25,7 +25,7 @@ for row in records:
   assert run['pool']==[123] and run['gold']==77
  print(p['name'],len(set(p['common']+p['rare']+p.get('starter_support',[]))),'cards')
 assert not set(c.PACK_ALIASES)&{p['id'] for p in c.PACKS}
-assert len([p for p in c.PACKS if p['name'].startswith(('Tournament Pack','Premium Pack','Limited Edition Collection'))])==3
+assert {p['id'] for p in c.PACKS if p['name'].endswith('Pack Collection') or p['name']=='Limited Edition Collection'}=={p['id'] for p in records}
 for char in c.CHARACTERS:
  assert char.get('pack') not in c.PACK_ALIASES
  assert not set(char.get('starting_packs',[]))&set(c.PACK_ALIASES)

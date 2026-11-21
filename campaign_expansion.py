@@ -94,7 +94,7 @@ def pack_archetype_relics(pack_id):
  _pack_relics[pack_id]=out;return out
 
 def install(g):
- g.CARDS=json.loads((g.ROOT/'data/era-cards.json').read_text(encoding='utf8'))+custom_cards.CARDS
+ g.CARDS=era_cards()+custom_cards.CARDS
  g.BY_ID={c['id']:c for c in g.CARDS};g.BY_NAME={c['name']:c for c in g.CARDS}
  # Pre-errata cards keep their passcode; the build bundles the matching script.
  for cid,row in json.loads((g.ROOT/'data/pre-errata.json').read_text(encoding='utf8'))['cards'].items():g.BY_ID[int(cid)]['desc']=row['desc']

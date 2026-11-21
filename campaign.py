@@ -2,6 +2,8 @@
 from collections import Counter
 from pathlib import Path
 
+EXTRA_DECK_TYPES = 0x40 | 0x2000  # Fusion or Synchro
+
 ROOT = Path(__file__).resolve().parent
 RUNTIME = ROOT / 'runtime'
 SAVE = ROOT / 'saves/run.json'
@@ -16,7 +18,7 @@ def deck(run):
     return [run['pool'][i] for i in run['selected']]
 
 def is_extra(cid):
-    return bool(BY_ID[cid]['data']['type'] & 64)
+    return bool(BY_ID[cid]['data']['type'] & EXTRA_DECK_TYPES)
 
 def card_identity(cid):
     c=BY_ID[cid]
@@ -87,4 +89,4 @@ install(sys.modules[__name__])
 
 def normal_starter(cid):
  c=BY_ID[cid];t=c['data']['type']
- return bool(t&1) and not bool(t&(0x40|0x80|0x2000000)) and 1<=c['level']<=4 and 'cannot be normal summoned' not in c.get('desc','').lower()
+ return bool(t&1) and not bool(t&(EXTRA_DECK_TYPES|0x80|0x2000000)) and 1<=c['level']<=4 and 'cannot be normal summoned' not in c.get('desc','').lower()

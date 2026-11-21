@@ -1,3 +1,4 @@
+import {EXTRA_DECK_TYPES} from './deck-minimum.js';
 // Deck editor pieces shared by Tag (tag-ui.js) and Draft Duels (draft-ui.js), with the same behaviour as solo
 // (mobile.js renderDraft): type tabs, effect search, Deck status, Sort, Deselect, ATK/DEF on monsters, and the
 // wide-screen Deck + Collection split. The editor object holds its state in deckFilter, deckSort, deckStatus,
@@ -10,7 +11,7 @@ import {pagedGrid} from './deck-paging.js';
 import {cardMarkVersion,noMarksLast,yesMarksFirst} from './card-marks.js';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export const DECK_TYPE_TABS=['All','Monster','Spell','Trap','Extra'];
-const TYPE_BITS={Monster:1,Spell:2,Trap:4,Extra:64};
+const TYPE_BITS={Monster:1,Spell:2,Trap:4,Extra:EXTRA_DECK_TYPES};
 
 export const deckFiltered=ed=>ed.deckFilter!=='All'||ed.deckSort!==DEFAULT_DECK_SORT||ed.deckStatus!==DEFAULT_DECK_STATUS;
 // After a duel only the type tab and the search reset; the reset button (all) also restores the default Sort and Deck status.
@@ -59,7 +60,7 @@ export function deckCardsArea(ed,order,selected,cardMarkup,stack=null){
   if(on){const a=groupStacks(deckSide,stack.run,selected,stack.limit),b=groupStacks(rest,stack.run,selected,stack.limit);deckSide=a.order;rest=b.order;markup=i=>stackButton(cardMarkup(i),a.stack(i)||b.stack(i),{...stack,pane:inDeck.has(i)?'deck':'collection'})}
   return `<div class="draft-card-scroll deck-split" ${splitStyle(ed.deckSplit)}>${splitDeckMarkup(deckSide,rest,markup,ed.deckFilter==='Extra',page,counts)}</div>`}
  let cards;if(on){const s=groupStacks(order,stack.run,selected,stack.limit);cards=pagedGrid(page.id,page.key,s.order,i=>stackButton(cardMarkup(i),s.stack(i),stack))}else cards=pagedGrid(page.id,page.key,order,cardMarkup);
- return `<div class="draft-card-scroll"><div class="cardgrid">${cards||(ed.deckFilter==='Extra'?'<p class="muted">No Extra Deck cards yet. Fusion Monsters you get will appear here.</p>':'')}</div></div>`;
+ return `<div class="draft-card-scroll"><div class="cardgrid">${cards||(ed.deckFilter==='Extra'?'<p class="muted">No Extra Deck cards yet.</p>':'')}</div></div>`;
 }
 
 // One card button with its ATK/DEF (relic-aware, like solo) and NEW marker. `attrs` carries the host's tap action.

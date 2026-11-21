@@ -25,7 +25,7 @@ def member(c,code):
 def members(code):
  return {c['id'] for c in g.CARDS if member(c,code) and c['id']!=ANCIENT_TREASURE}
 def pool_for(c):
- return 'rare' if c['data']['type']&0xc0 or c.get('level',0)>=7 or c['id'] in card_rarity.ULTRA else 'common'
+ return 'rare' if c['data']['type']&(g.EXTRA_DECK_TYPES|0x80) or c.get('level',0)>=7 or c['id'] in card_rarity.ULTRA else 'common'
 
 def complete(packs):
  changes=[]
@@ -52,7 +52,7 @@ def complete(packs):
 if __name__=='__main__':
  path=ROOT/'data/packs.json';raw=path.read_bytes().decode('utf8');packs=json.loads(raw);changes=complete(packs)
  if '--apply' in sys.argv:
-  path.write_bytes((json.dumps(packs,indent=2)+'\n').replace('\n','\r\n').encode('utf8'))
+  path.write_bytes((json.dumps(packs,indent=2,ensure_ascii=False)+'\n').replace('\n','\r\n').encode('utf8'))
  sys.stdout.reconfigure(encoding='utf8')
  by={}
  for row in changes:by.setdefault(row['pack'],[]).append(row)

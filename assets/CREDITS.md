@@ -5,6 +5,7 @@ Existing artwork is used. Anubis’s background removal and square portrait crop
 - Existing browser-version cached assets were reused.
 - Card images and booster packaging: YGOPRODeck, https://ygoprodeck.com/api-guide/ . Some booster packaging URLs come from the YGOJSON set metadata.
 - English/Japanese card and set metadata: YGOJSON, https://github.com/iconmaster5326/YGOJSON . Four incomplete Japanese set tables are supplemented from YGOPRODeck set checklists.
+- Edison additions: [Konami Neuron's English TCG release archive](https://www.db.yugioh-card.com/yugiohdb/card_list.action?request_locale=en) supplies the dated printings and rarities. YGOJSON supplies the passcode crosswalk and available pack scans. The bundled Project Ignis database and scripts supply the duel metadata. The Premium Pack and Edison reward covers use the existing card back with fork-specific text.
 - Character portraits: Konami Duel Links official character assets, https://www.konami.com/yugioh/duel_links/en/ .
 - Artifact icons are crops of existing card illustrations.
 - Opponent card quantities: World Championship Tournament 2004 opponent FAQ, https://gamefaqs.gamespot.com/gba/919562-yu-gi-oh-world-championship-tournament-2004/faqs/28716 . Factual card/count records are stored in data/opponents.json with per-deck provenance. Typographical errors and historic card names are normalized; Joey's 41 listed cards are retained despite the guide's 40-card heading. Early opponents after the practice duel use those records directly.
