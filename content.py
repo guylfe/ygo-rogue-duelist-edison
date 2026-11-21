@@ -3,8 +3,10 @@ import json
 from pathlib import Path
 DATA = Path(__file__).parent / 'data'
 
-def era_cards():
- return [card for name in ('era-cards.json','edison-cards.json')
+def era_cards(include_optional=True):
+ files=('era-cards.json','edison-cards.json')
+ if include_optional:files+=('extreme-victory-cards.json',)
+ return [card for name in files
          for card in json.loads((DATA/name).read_text(encoding='utf8'))]
 
 PACKS=[pack for name in ('packs.json','edison-packs.json')
@@ -16,6 +18,8 @@ PACKS,MERGED_PACK_ALIASES=merge_pack_catalog(PACKS)
 FIXED_OPPONENTS=json.loads((Path(__file__).parent/'data/fixed-opponents.json').read_text(encoding='utf8'))['opponents']
 GAME_DECKS={int(k):v for k,v in FIXED_OPPONENTS.items()}
 PACK_BY_ID={p['id']:p for p in PACKS}
+EXTREME_VICTORY_PACK=json.loads((DATA/'extreme-victory-pack.json').read_text(encoding='utf8'))[0]
+PACK_BY_ID[EXTREME_VICTORY_PACK['id']]=EXTREME_VICTORY_PACK
 # Retired boosters resolve to their collection, but are never offered separately.
 PACK_ALIASES={'EN-TP1':'EN-TP4','EN-TP2':'EN-TP4','EN-TP3':'EN-TP4','EN-TP5':'EN-TP4','JP-P5':'JP-PP7','JP-PP6':'JP-PP7'}
 PACK_ALIASES.update({f'JP-P{n}':'JP-PP7' for n in range(1,5)})
@@ -29,7 +33,7 @@ PACK_BY_ID.update({old:PACK_BY_ID[new] for old,new in PACK_ALIASES.items()})
 # and one printing per card (card-aliases.json) keeps alternate arts from doubling its odds.
 def _fill_millennium_puzzles():
  root=Path(__file__).parent
- rows=era_cards()
+ rows=era_cards(include_optional=False)
  era={c['id']:c['type'] for c in rows};names={c['id']:c['name'] for c in rows}
  aliases={int(k):v for k,v in json.loads((root/'data/card-aliases.json').read_text(encoding='utf8')).items()}
  kinds={'WC4-20':'Spell','WC4-21':'Trap','WC4-22':'Monster','WC4-23':None}
@@ -366,7 +370,7 @@ TUTORIAL_OPPONENTS={int(k):v for k,v in json.loads((Path(__file__).parent/'data/
 def deck_round(run):
  """The round whose opponents and decks this duel uses. Solo Copycat skips the tutorial decks (user, 2026-11-07): its first duel reads Tier 1, as round 1 does.
  Tag keeps the shared tutorial opener; Tag Copycat mirrors its partner's deck anyway."""
- if run['round']==0 and not run.get('loop') and run.get('history_mode')!='tag' and copies_deck(run):return 1
+ if run['round']==0 and not run.get('loop') and run.get('history_mode')!='tag' and (copies_deck(run) or run.get('act',1)>1):return 1
  return run['round']
 
 def eligible_opponents(round_index,loop=0):

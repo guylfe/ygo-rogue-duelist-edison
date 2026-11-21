@@ -742,9 +742,9 @@ function summonedStats(live,seq){if((tagUI&&!engine?.aiModifiers)||typeof engine
 
 let titleMotion=null;
 
-function render(){if(screen!=='shop'&&(shopkeeperSmall||shopkeeperShrinking)){cancelShopkeeperShrink();shopkeeperSmall=false;resetShopkeeperRightClicks()}syncBackgroundAnimations();if(screen!=='duel')clearDuelDOM(app);if(screen!=='ending')clearShadowVictory();titleMotion?.destroy();titleMotion=null;if(screen==='tag'){tagUI?.render();return}removeActions();if(screen!=='duel')clearTimeout(aiTimer);({title:renderTitle,characters:renderCharacters,draft:renderDraft,routes:renderRoutes,shop:renderShop,achievements:renderAchievements,relics:renderRelics,settings:renderSettings,cosmetics:renderCosmetics,tutorial:renderTutorial,collection:renderCollection,stats:renderStats,gallery:renderGallery,ending:renderEnding,duel:renderDuel})[screen]();track(screenMusic())}
+function render(){if(screen!=='shop'&&(shopkeeperSmall||shopkeeperShrinking)){cancelShopkeeperShrink();shopkeeperSmall=false;resetShopkeeperRightClicks()}syncBackgroundAnimations();if(screen!=='duel')clearDuelDOM(app);if(screen!=='ending')clearShadowVictory();titleMotion?.destroy();titleMotion=null;if(screen==='tag'){tagUI?.render();return}removeActions();if(screen!=='duel')clearTimeout(aiTimer);({title:renderTitle,characters:renderCharacters,draft:renderDraft,starter:renderActStarter,act_transition:renderActTransition,routes:renderRoutes,shop:renderShop,achievements:renderAchievements,relics:renderRelics,settings:renderSettings,cosmetics:renderCosmetics,tutorial:renderTutorial,collection:renderCollection,stats:renderStats,gallery:renderGallery,ending:renderEnding,duel:renderDuel})[screen]();renderActTools();track(screenMusic())}
 
-function go(name){if(name==='routes'&&state.run?.reward_slots?.pending){if(rewardDeckReturn)go(state.run.stage==='shop'?'shop':'ending');return;}if(rewardDeckReturn&&!['draft','shop','ending'].includes(name))rewardDeckReturn=false;if(name!=='duel'){clearTimeout(heldChainTimer);heldChainTimer=0;heldChainPointer=null;heldAlwaysChain=false;heldChainPrompt=null;}cancelCharacterEntrance();if(name!=='ending')clearShadowVictory();clearDuelEmotes();flushDraftTap();if(name!=='shop')keeperTalk.hush();if(name!=='shop'||screen!=='shop'){cancelShopkeeperShrink();shopkeeperSmall=false;resetShopkeeperRightClicks()}const pendingRewards=['shop','ending'].includes(name)&&state.run?.reward_slots?.pending;if(pendingRewards)rewardMusic=true;if(name!==screen)previousScreen=screen;screen=name;syncBackgroundAnimations();render();if(name==='shop')settleViewport();if(['draft','shop'].includes(name)&&(state.run?.artifacts.includes('dna_rewrite')&&!state.run.monster_type||pendingRelicChoice(state.run))&&!modal.open)void offerGoldenCards();if(pendingRewards){if(rewardDeckReturn){rewardDeckReturn=false;if(modal.querySelector('.reward-screen')){modal.showModal();rewardPresentation?.refresh()}else showRewardSlots()}else showVictoryReceipt()}}
+function go(name){if(name==='routes'&&state.run?.reward_slots?.pending){if(rewardDeckReturn)go(postDuelScreen());return;}if(rewardDeckReturn&&!['draft','shop','ending'].includes(name))rewardDeckReturn=false;if(name!=='duel'){clearTimeout(heldChainTimer);heldChainTimer=0;heldChainPointer=null;heldAlwaysChain=false;heldChainPrompt=null;}cancelCharacterEntrance();if(name!=='ending')clearShadowVictory();clearDuelEmotes();flushDraftTap();if(name!=='shop')keeperTalk.hush();if(name!=='shop'||screen!=='shop'){cancelShopkeeperShrink();shopkeeperSmall=false;resetShopkeeperRightClicks()}const pendingRewards=['shop','ending','act_transition'].includes(name)&&state.run?.reward_slots?.pending;if(pendingRewards)rewardMusic=true;if(name!==screen)previousScreen=screen;screen=name;syncBackgroundAnimations();render();if(name==='shop')settleViewport();if(['draft','shop'].includes(name)&&(state.run?.artifacts.includes('dna_rewrite')&&!state.run.monster_type||pendingRelicChoice(state.run))&&!modal.open)void offerGoldenCards();if(pendingRewards){if(rewardDeckReturn){rewardDeckReturn=false;if(modal.querySelector('.reward-screen')){modal.showModal();rewardPresentation?.refresh()}else showRewardSlots()}else showVictoryReceipt()}}
 
 let menu=baseMenu,menuPage='main',menuPageEntry=null;
 
@@ -920,10 +920,10 @@ async function newRun(){showRunSlots(true)}
 
 // One new run per pick: a second slot tapped before the first run is created would start a second run (2026-11-03).
 let startingRun=false;
-async function beginNew(slot,replace=false){if(startingRun)return;startingRun=true;modal.querySelectorAll('.save-slot,[data-do="confirm-new"]').forEach(b=>b.disabled=true);try{shopSelection.clear();const start=()=>command('new',{character:selected,level:selectedLevels[selected]||0,variant:selectedVariants[selected]||0,slot,replace});if(content.characters[selected]?.alternate?.randomized&&(selectedVariants[selected]||0)===1){await hatLoading(async()=>{await start();await drawRandomCards(state.run.pool)},{title:'RANDOMIZING CARDS',minimum:1200});skipHatOnce=true}else await start()}catch(error){modal.querySelectorAll('.save-slot,[data-do="confirm-new"]').forEach(b=>b.disabled=false);throw error}finally{startingRun=false}modal.close();if(fixedDeck(state.run,character()))go('routes');else await characterEntrance(app.querySelector('.duelist-hero>img'),()=>{go('draft');if(state.run.packs.length)openDraftPack(0,false);else showStartingDeck()})}
+async function beginNew(slot,replace=false){if(startingRun)return;startingRun=true;modal.querySelectorAll('.save-slot,[data-do="confirm-new"]').forEach(b=>b.disabled=true);try{shopSelection.clear();const start=()=>command('new',{character:selected,level:selectedLevels[selected]||0,variant:selectedVariants[selected]||0,slot,replace});if(content.characters[selected]?.alternate?.randomized&&(selectedVariants[selected]||0)===1){await hatLoading(async()=>{await start();await drawRandomCards(state.run.pool)},{title:'RANDOMIZING CARDS',minimum:1200});skipHatOnce=true}else await start()}catch(error){modal.querySelectorAll('.save-slot,[data-do="confirm-new"]').forEach(b=>b.disabled=false);throw error}finally{startingRun=false}modal.close();if(state.run.stage==='starter')go('starter');else if(fixedDeck(state.run,character()))go('routes');else await characterEntrance(app.querySelector('.duelist-hero>img'),()=>{go('draft');if(state.run.packs.length)openDraftPack(0,false);else showStartingDeck()})}
 // Hidden restart for keyboards (user, 2026-11-15): hold R for 3 seconds to start the run again with the same duelist,
 // variant and level. Only until the first duel ends (first loop, no duel won or lost); the backend checks it too.
-function canRestartRun(){const r=state?.run;return !!r&&!tagUI&&!lesson&&!r.loop&&!(r.round>0)&&!['gameover','complete'].includes(r.stage)&&!r.secret_challenge&&['draft','routes','duel'].includes(screen)}
+function canRestartRun(){const r=state?.run;return !!r&&!tagUI&&!lesson&&!r.loop&&(r.act||1)===1&&!(r.round>0)&&!['gameover','complete'].includes(r.stage)&&!r.secret_challenge&&['draft','routes','duel'].includes(screen)}
 let restartHold=null;const stopRestartHold=()=>{clearTimeout(restartHold);restartHold=null};
 document.addEventListener('keydown',e=>{if(e.code!=='KeyR'||e.repeat||e.ctrlKey||e.metaKey||e.altKey||restartHold||e.target?.closest?.('input,textarea,select,[contenteditable]')||!canRestartRun())return;restartHold=setTimeout(()=>{restartHold=null;if(canRestartRun())void restartRun().catch(error=>toast(error.message))},3000)});
 document.addEventListener('keyup',e=>{if(e.code==='KeyR')stopRestartHold()});
@@ -936,8 +936,73 @@ async function restartRun(){
   if(content.characters[r.character]?.alternate?.randomized&&(r.variant||0)===1){await hatLoading(async()=>{await start();await drawRandomCards(state.run.pool)},{title:'RANDOMIZING CARDS',minimum:1200});skipHatOnce=true}else await start();
  }finally{startingRun=false}
  toast('Run restarted.');
- if(fixedDeck(state.run,character()))go('routes');else{go('draft');if(state.run.packs.length)openDraftPack(0,false);else showStartingDeck()}
+ if(state.run.stage==='starter')go('starter');else if(fixedDeck(state.run,character()))go('routes');else{go('draft');if(state.run.packs.length)openDraftPack(0,false);else showStartingDeck()}
 }
+function postDuelScreen(){
+ const stage=state.run?.stage;
+ return stage==='shop'||stage==='act_transition'?stage:'ending';
+}
+function actTitle(run){
+ const act=content.campaignActs?.[run.act-1];
+ return act?'Act '+run.act+' · '+act.name:'';
+}
+function soloDeckMinimum(run){
+ return deckMinimum(run,content.characters[run.character],content.campaignActs);
+}
+function actPackButton(id,action,attrs='',disabled=false){
+ const name=packInfo(id)?.name||id;
+ return btn('<img src="assets/packs/'+esc(id)+'.jpg" alt=""><span>'+esc(name)+'</span>',action,
+  'data-pack="'+esc(id)+'" '+attrs+(disabled?' disabled':''),'act-pack-choice');
+}
+function renderActStarter(){
+ const r=state.run;
+ shell(esc(actTitle(r)), '<section class="scroll act-choices"><h3>Choose a supporting booster</h3>'+
+  '<p>Your starting boosters: '+r.pack_ids.map(id=>esc(packInfo(id)?.name||id)).join(' · ')+'</p>'+
+  '<div class="act-pack-grid">'+Object.keys(r.starter_offer).map(id=>actPackButton(id,'act-starter')).join('')+'</div></section>');
+}
+let actChoiceKey='',actPicks=[],actCarry=new Set();
+function renderActTransition(){
+ const r=state.run,offer=r.act_transition;
+ if(r.cursed_offer&&!r.reward_slots?.pending){renderCursedRelics();return}
+ const key=r.started_at+':'+r.act;
+ if(key!==actChoiceKey){actChoiceKey=key;actPicks=[];actCarry=new Set()}
+ const incoming=content.campaignActs[offer.incoming-1];
+ const extra=r.extreme_victory&&offer.incoming===3?' + Extreme Victory':'';
+ const picks=actPicks.map((id,i)=>btn(esc(packInfo(id)?.name||id)+' ×','act-remove-pack','data-index="'+i+'"')).join(' ');
+ shell('Act '+offer.incoming+' · '+esc(incoming.name+extra),'<section class="scroll act-choices">'+
+  '<h3>Choose '+offer.picks+' incoming boosters</h3><p>You can choose a booster more than once. Main Deck minimum: '+incoming.minimum+'.</p>'+
+  '<div class="act-pack-grid">'+offer.choices.map(id=>actPackButton(id,'act-add-pack','',actPicks.length>=offer.picks)).join('')+'</div>'+
+  '<div class="act-selection" aria-live="polite">'+actPicks.length+' / '+offer.picks+' selected '+picks+'</div>'+
+  '<h3>Carry forward up to '+offer.carry_limit+' boosters</h3><p>Selected boosters can appear in the next act’s shop.</p>'+
+  '<div class="act-pack-grid">'+offer.carryable.map(id=>actPackButton(id,'act-carry','aria-pressed="'+actCarry.has(id)+'"',!actCarry.has(id)&&actCarry.size>=offer.carry_limit)).join('')+'</div>'+
+  btn('Open boosters and continue','act-claim',actPicks.length===offer.picks&&!r.reward_slots?.pending&&!r.cursed_offer?'':'disabled','primary')+'</section>');
+}
+function renderActTools(){
+ if(!['draft','shop'].includes(screen)||!state.run?.act)return;
+ const target=app.querySelector('.shop-layout')||app.querySelector('.draft-summary');
+ if(!target||!state.actPinOptions?.length)return;
+ const label=state.run.pinned_pack?('Marked booster · '+(packInfo(state.run.pinned_pack)?.name||state.run.pinned_pack)):'Mark an opened booster';
+ target.insertAdjacentHTML('beforebegin','<div class="act-tools">'+btn(esc(label),'pin-booster-dialog')+'</div>');
+}
+function showPinOptions(){
+ const p=state.run.pinned_pack;
+ dialog('Mark a booster','<p>One opened booster can recur in a shop slot at its normal price. You can change the mark between duels.</p>'+
+  '<div class="act-pack-grid">'+state.actPinOptions.map(id=>actPackButton(id,'pin-booster','aria-pressed="'+(p===id)+'"')).join('')+'</div>'+
+  (p?btn('Clear mark','pin-booster'):''));
+}
+function showVictoryTargets(opponent){
+ const r=state.run,examples=r.route_examples?.[opponent]||[];
+ const fixed=fixedDeck(r,character())||character().engine_deck;
+ const selected=r.reward_targets?.[opponent];
+ const shown=examples.map(id=>{
+  const c=card(id);
+  const info=cardButton(id,'data-inspect="'+id+'"');
+  return '<article>'+info+(fixed?'':btn('Choose '+esc(c.name),'reward-target','data-opponent="'+opponent+'" data-card="'+id+'" aria-pressed="'+(selected===id)+'"'))+'</article>';
+ }).join('');
+ dialog('Opponent card preview','<p>'+(fixed?'Examples from the deck you will face. This duelist uses their usual fixed-deck reward.':'Win this duel to receive the chosen card in one of your existing victory slots.')+'</p><div class="cardgrid">'+shown+'</div>');
+}
+
+
 function showStartingDeck(){const deck=content.preconstructedDecks.find(d=>d.id===state.run.engine_deck);if(deck)dialog('Starting deck',`<div class="starting-deck"><img src="assets/decks/${deck.art}.jpg" alt=""><h3>${esc(deck.name)}</h3><p>${deck.cards.length} cards. Tap the cards to change your deck.</p></div>`)}
 
 // Random Packs (user, 2026-11-15): a short hat animation hides the drawing of their cards (at least 1 s, and until every
@@ -970,7 +1035,7 @@ if(draftSort==='Level'){const attacks=new Map(base.map(i=>[i,card(pool[i]).data.
 function markGoldenCards(root,r){const ids=[...(r.golden_cards||[]),r.golden_card];for(const el of root.querySelectorAll('[data-pick]:not(.golden-card)'))if(ids.includes(r.pool[Number(el.dataset.pick)])){el.classList.add('golden-card');el.insertAdjacentHTML('beforeend','<span class="golden-sleeve-mark" title="Golden Sleeve" aria-label="Golden Sleeve">★</span>')}}
 
 
-function renderDraft(){const r=state.run,copy=fixedDeck(r,character()),main=r.selected.filter(i=>!isExtraDeck(card(r.pool[i]))).length;let count={};r.selected.forEach(i=>count[r.pool[i]]=(count[r.pool[i]]||0)+1);shell('Build your deck',`<div class="scroll draft-scroll"><div class="draft-summary"><div><p class="draft-count">${main} / ${deckMinimum(r,content.characters[r.character])}+ minimum main · ${r.selected.length-main} Extra Deck · ${copyLimitText(r)} ${copy?(character().copycat?'Copycat’s borrowed deck is read-only.':'Dueling Engine’s fixed starter deck is read-only.') : ''}</p><p class="draft-inspect-help">Hold a card to inspect · Drag to scroll</p>${bossCurseNote(r,curseIconFile)}</div><button class="tag-choose-opponent draft-next deck-count-arrow" data-do="routes" ${!copy&&(main<(deckMinimum(r,content.characters[r.character]))||main>60)?'disabled':''} aria-label="${main}/${deckMinimum(r,content.characters[r.character])}+ main deck cards — Next duel"><span><span class="tag-next-label"><strong>${main}/${deckMinimum(r,content.characters[r.character])}+</strong></span></span></button></div><div class="draft-tabs deck-filter-row">${deckSearchButtons('draft',draftFiltered())}${['All','Monster','Spell','Trap','Extra'].map(t=>`<button data-draft-tab="${t}" class="${draftTab===t?'active':''}">${t==='Extra'?'Extra Deck':t}</button>`).join('')}<select data-draft-deck aria-label="Deck status">${DECK_STATUS_OPTIONS.map(([v,label])=>`<option value="${v}" ${v===draftDeck?'selected':''}>${label}</option>`).join('')}</select><select data-draft-sort aria-label="Sort">${DRAFT_SORTS.map(o=>`<option value="${o}" ${o===draftSort?'selected':''}>${o}</option>`).join('')}</select><button class="deck-deselect" data-do="deselect-all" aria-label="Deselect all" title="Deselect all" ${copy?'disabled':''}>${deselectIcon}</button><span class="deck-filter-break" aria-hidden="true"></span></div>${bountyBanner(r)}${draftSplit?`<div class="draft-card-scroll deck-split" ${splitStyle(draftSplit)}>${splitDeckPanes(r)}</div>`:`<div class="draft-card-scroll"><div class="cardgrid">${draftGridCards(r)||(draftTab==='Extra'?'<p class="muted">No Extra Deck cards yet. Fusion Monsters you get will appear here.</p>':'')}</div></div>`}</div>`,`${rewardDeckReturn?btn('Back to rewards','reward-return'):r.stage==='shop'?btn('Back to shop','shop'):''}`);markGoldenCards(app,r);deckReadyFeedback(app,main,deckMinimum(r,content.characters[r.character]));checkDraftSplit()}
+function renderDraft(){const r=state.run,copy=fixedDeck(r,character()),main=r.selected.filter(i=>!isExtraDeck(card(r.pool[i]))).length;let count={};r.selected.forEach(i=>count[r.pool[i]]=(count[r.pool[i]]||0)+1);shell(r.act?actTitle(r)+' · Build your deck':'Build your deck',`<div class="scroll draft-scroll"><div class="draft-summary"><div><p class="draft-count">${main} / ${soloDeckMinimum(r)}+ minimum main · ${r.selected.length-main} Extra Deck · ${copyLimitText(r)} ${copy?(character().copycat?'Copycat’s borrowed deck is read-only.':'Dueling Engine’s fixed starter deck is read-only.') : ''}</p><p class="draft-inspect-help">Hold a card to inspect · Drag to scroll</p>${bossCurseNote(r,curseIconFile)}</div><button class="tag-choose-opponent draft-next deck-count-arrow" data-do="routes" ${!copy&&(main<(soloDeckMinimum(r))||main>60)?'disabled':''} aria-label="${main}/${soloDeckMinimum(r)}+ main deck cards — Next duel"><span><span class="tag-next-label"><strong>${main}/${soloDeckMinimum(r)}+</strong></span></span></button></div><div class="draft-tabs deck-filter-row">${deckSearchButtons('draft',draftFiltered())}${['All','Monster','Spell','Trap','Extra'].map(t=>`<button data-draft-tab="${t}" class="${draftTab===t?'active':''}">${t==='Extra'?'Extra Deck':t}</button>`).join('')}<select data-draft-deck aria-label="Deck status">${DECK_STATUS_OPTIONS.map(([v,label])=>`<option value="${v}" ${v===draftDeck?'selected':''}>${label}</option>`).join('')}</select><select data-draft-sort aria-label="Sort">${DRAFT_SORTS.map(o=>`<option value="${o}" ${o===draftSort?'selected':''}>${o}</option>`).join('')}</select><button class="deck-deselect" data-do="deselect-all" aria-label="Deselect all" title="Deselect all" ${copy?'disabled':''}>${deselectIcon}</button><span class="deck-filter-break" aria-hidden="true"></span></div>${bountyBanner(r)}${draftSplit?`<div class="draft-card-scroll deck-split" ${splitStyle(draftSplit)}>${splitDeckPanes(r)}</div>`:`<div class="draft-card-scroll"><div class="cardgrid">${draftGridCards(r)||(draftTab==='Extra'?'<p class="muted">No Extra Deck cards yet. Fusion Monsters you get will appear here.</p>':'')}</div></div>`}</div>`,`${rewardDeckReturn?btn('Back to rewards','reward-return'):r.stage==='shop'?btn('Back to shop','shop'):''}`);markGoldenCards(app,r);deckReadyFeedback(app,main,soloDeckMinimum(r));checkDraftSplit()}
 // Big collections draw in pages (deck-paging.js); the page count holds while the order does.
 const draftPage=r=>({id:'solo-deck',key:JSON.stringify([draftTab,draftSort,draftDeck,deckSearches.draft||null,r.pool.length,stacksOn(),!!draftSplit]),after:()=>markGoldenCards(app,r)});
 // The selection the grid was last laid out with. A tap redraws the stacks in place, like the plain grid and Tag (Nori,
@@ -1008,7 +1073,7 @@ function updateSplitPanes(r){
 
 // Stacks (deck-stacks.js) change shape on every tap, so the grid is rebuilt; every scroll position is put back.
 function updateStackedGrid(r){const grid=app.querySelector('.draft-card-scroll .cardgrid'),scrollers=[...app.querySelectorAll('.draft-card-scroll,.draft-scroll')],tops=scrollers.map(s=>s.scrollTop);if(!grid)return;grid.innerHTML=draftGridCards(r,true);scrollers.forEach((s,n)=>s.scrollTop=tops[n]);markGoldenCards(app,r)}
-function updateDraft(){if(screen!=='draft')return;const r=state.run,main=r.selected.filter(i=>!isExtraDeck(card(r.pool[i]))).length;const minimum=deckMinimum(r,content.characters[r.character]),arrow=document.querySelector('.deck-count-arrow');if(arrow){arrow.disabled=!fixedDeck(r,character())&&(main<minimum||main>60);arrow.querySelector('strong').textContent=`${main}/${minimum}+`;arrow.setAttribute('aria-label',`${main}/${minimum}+ main deck cards — Next duel`);markGoldenCards(app,r);deckReadyFeedback(app,main,minimum);}document.querySelector('.draft-count').textContent=`${main} / ${deckMinimum(r,content.characters[r.character])}+ minimum main · ${r.selected.length-main} Extra Deck · ${copyLimitText(r)} ${fixedDeck(r,character())?'Fixed deck is read-only.':''}`;if(draftSplit)return updateSplitPanes(r);if(stacksOn())return updateStackedGrid(r);document.querySelectorAll('[data-pick]').forEach(el=>{const active=r.selected.includes(+el.dataset.pick);el.classList.toggle('selected',active);el.setAttribute('aria-pressed',String(active))})}
+function updateDraft(){if(screen!=='draft')return;const r=state.run,main=r.selected.filter(i=>!isExtraDeck(card(r.pool[i]))).length;const minimum=soloDeckMinimum(r),arrow=document.querySelector('.deck-count-arrow');if(arrow){arrow.disabled=!fixedDeck(r,character())&&(main<minimum||main>60);arrow.querySelector('strong').textContent=`${main}/${minimum}+`;arrow.setAttribute('aria-label',`${main}/${minimum}+ main deck cards — Next duel`);markGoldenCards(app,r);deckReadyFeedback(app,main,minimum);}document.querySelector('.draft-count').textContent=`${main} / ${soloDeckMinimum(r)}+ minimum main · ${r.selected.length-main} Extra Deck · ${copyLimitText(r)} ${fixedDeck(r,character())?'Fixed deck is read-only.':''}`;if(draftSplit)return updateSplitPanes(r);if(stacksOn())return updateStackedGrid(r);document.querySelectorAll('[data-pick]').forEach(el=>{const active=r.selected.includes(+el.dataset.pick);el.classList.toggle('selected',active);el.setAttribute('aria-pressed',String(active))})}
 
 let draftTap=null,draftPointer=null;
 
@@ -1066,13 +1131,13 @@ function warmOpponents(ids){if(state.settings.simpleBackgrounds||state.settings.
 const warmedArt=new Set();
 function warmDeckArt(ids){for(const id of new Set(ids)){if(warmedArt.has(id)||warmedArt.size>400)continue;warmedArt.add(id);const img=new Image();img.decoding='async';img.src=image(id)}}
 
-function renderRoutes(){const r=state.run,boss=(r.round+1)%3===0;warmOpponents(r.routes||[]);const key=JSON.stringify([r.started_at,r.character,r.loop,r.round,r.boss_rerolls||0,r.routes]);shell(`Loop ${(r.loop||0)+1} · Duel ${r.round+1} / 9${boss?'<span class="header-extra"> — BOSS ENCOUNTER</span>':''}`,`${boss?bossBanner(r):''}<div class="routes">${r.routes.map(i=>encounterCard(content,r,i,{button:btn,curseIcons})).join('')}</div>${boss?bossControls(r):''}`,`<span class="route-stats"><span class="route-lp"><b>${Number(r.lp||0).toLocaleString()}</b> LP</span>${!boss?`<span class="route-coins"><img src="assets/ui/coins.png" alt="Coins"><b>${coinLabel(r.gold)}</b></span>`:''}</span>${r.stage==='shop'?btn('Back to shop','shop','','route-shop-back'):''}${fixedDeck(r,character())?'':`<button class="navigation-icon-button" data-do="draft" aria-label="Edit deck" title="Edit deck">${deckEditIcon}</button>`}`,`route-page${boss?' boss':''}`);mountRunStrip();if(boss&&!seenBossReveals.has(key)){seenBossReveals.add(key);if(seenBossReveals.size>64)seenBossReveals.delete(seenBossReveals.values().next().value);busy=true;playEncounterReveal({run:r,voice:juice.bossNameVoice,content,collectors:r.fallen_routes,opponents:r.routes,slot:true,sound:duelSound,tickSound:slotTickSound,stopTick:()=>slotTick.pause(),active:()=>screen==='routes'}).finally(()=>busy=false)}}
+function renderRoutes(){const r=state.run,boss=(r.round+1)%3===0;warmOpponents(r.routes||[]);const key=JSON.stringify([r.started_at,r.character,r.loop,r.round,r.boss_rerolls||0,r.routes]);shell(`${r.act&&!r.loop?esc(actTitle(r)):'Loop '+((r.loop||0)+1)} · Duel ${r.round+1} / 9${boss?'<span class="header-extra"> — BOSS ENCOUNTER</span>':''}`,`${boss?bossBanner(r):''}<div class="routes">${r.routes.map(i=>encounterCard(content,r,i,{button:btn,curseIcons})).join('')}</div>${boss?bossControls(r):''}`,`<span class="route-stats"><span class="route-lp"><b>${Number(r.lp||0).toLocaleString()}</b> LP</span>${!boss?`<span class="route-coins"><img src="assets/ui/coins.png" alt="Coins"><b>${coinLabel(r.gold)}</b></span>`:''}</span>${r.stage==='shop'?btn('Back to shop','shop','','route-shop-back'):''}${fixedDeck(r,character())?'':`<button class="navigation-icon-button" data-do="draft" aria-label="Edit deck" title="Edit deck">${deckEditIcon}</button>`}`,`route-page${boss?' boss':''}`);mountRunStrip();if(boss&&!seenBossReveals.has(key)){seenBossReveals.add(key);if(seenBossReveals.size>64)seenBossReveals.delete(seenBossReveals.values().next().value);busy=true;playEncounterReveal({run:r,voice:juice.bossNameVoice,content,collectors:r.fallen_routes,opponents:r.routes,slot:true,sound:duelSound,tickSound:slotTickSound,stopTick:()=>slotTick.pause(),active:()=>screen==='routes'}).finally(()=>busy=false)}}
 
 let shopSelection=new Set(),shopInventoryKey=null;
 
 // Current LP and coins on the shadow relic screen: Zombie's Bargain, Blood Toll and friends depend on them (Discord, 2026-11-16).
 const cursedStanding=r=>`${Number(r?.lp||0).toLocaleString()} LP · ${Number(r?.gold||0).toLocaleString()} coins`;
-function renderCursedRelics(){const offer=state.run.cursed_offer;app.innerHTML=`<section class="cursed-reward"><nav class="cursed-reward-topbar" aria-label="Run tools">${fixedDeck(state.run,character())?'':`<button class="navigation-icon-button" data-do="draft" aria-label="Edit deck" title="Edit deck">${deckEditIcon}</button>`}${btn(relicEyeIcon,'relic-ledger','aria-label="Relics" title="Relics"','navigation-icon-button')}</nav><header><small>BOSS DEFEATED</small>${offer.picked?'<h1>'+(offer.picked.length>1?'Choose a third shadow relic':'Choose a second shadow relic')+'</h1><p>Champion Trophy: choose 1 more, or skip it.</p>':'<h1>Choose a shadow relic</h1><p>Choose 1. Its benefit and drawback last for this run.</p>'}<p class="cursed-standing">${cursedStanding(state.run)}</p></header><div class="cursed-options">${offer.options.map(key=>{const [name,,text]=content.artifacts[key];return `<article><h2>${esc(name)}</h2>${relicArtwork(relicImage(content.artifactInfo[key].art))}${cursedMarkup(key,text,content.artifactInfo[key]?.parts)}${btn('Choose relic','cursed-choose',`data-relic="${esc(key)}"`,'primary')}</article>`}).join('')}</div><footer>${btn('Reroll · Rerolls: '+offer.rerolls_left,'cursed-reroll',offer.rerolls_left?'':'disabled')}${offer.picked?btn(offer.picked.length>1?'Skip third relic':'Skip second relic','cursed-skip'):''}</footer></section>`}
+function renderCursedRelics(){const offer=state.run.cursed_offer;app.innerHTML=`<section class="cursed-reward"><nav class="cursed-reward-topbar" aria-label="Run tools">${(state.run.stage==='act_transition'||fixedDeck(state.run,character()))?'':`<button class="navigation-icon-button" data-do="draft" aria-label="Edit deck" title="Edit deck">${deckEditIcon}</button>`}${btn(relicEyeIcon,'relic-ledger','aria-label="Relics" title="Relics"','navigation-icon-button')}</nav><header><small>BOSS DEFEATED</small>${offer.picked?'<h1>'+(offer.picked.length>1?'Choose a third shadow relic':'Choose a second shadow relic')+'</h1><p>Champion Trophy: choose 1 more, or skip it.</p>':'<h1>Choose a shadow relic</h1><p>Choose 1. Its benefit and drawback last for this run.</p>'}<p class="cursed-standing">${cursedStanding(state.run)}</p></header><div class="cursed-options">${offer.options.map(key=>{const [name,,text]=content.artifacts[key];return `<article><h2>${esc(name)}</h2>${relicArtwork(relicImage(content.artifactInfo[key].art))}${cursedMarkup(key,text,content.artifactInfo[key]?.parts)}${btn('Choose relic','cursed-choose',`data-relic="${esc(key)}"`,'primary')}</article>`}).join('')}</div><footer>${btn('Reroll · Rerolls: '+offer.rerolls_left,'cursed-reroll',offer.rerolls_left?'':'disabled')}${offer.picked?btn(offer.picked.length>1?'Skip third relic':'Skip second relic','cursed-skip'):''}</footer></section>`}
 
 // A small count of copies already in your card pool, so a fourth copy is not bought by mistake.
 
@@ -1212,7 +1277,7 @@ const uiScaleLabel=v=>v?`${v}%`:`Auto (${autoUiScale()}%)`;
 const uiScaleSlider=()=>{const v=uiScaleValue(state.settings.uiScale);return settingSlider('UI Scale','Size of the whole game, for large or high-resolution screens. Auto enlarges it on very wide windows.','ui-scale',v||70,70,200,5,'').replace(/<output>.*?<\/output>/,`<output>${uiScaleLabel(v)}</output>`)};
 const displaySettings=()=>settingSlider('Text Size','Menus, shop, card text, prompts, settings and the duel log.','text-size',state.settings.textSize,50,150,10,'%')+uiScaleSlider()+deckColumnsSlider()+settingToggle('Split Deck Editor','Your deck and your collection side by side, from 10 cards per row. The deck side shows 5 per row, or 8 from 18.','data-deck-split-toggle',state.settings.deckSplit)+settingToggle('Reduce Motion','Calm animations, the same as your device’s reduced motion setting.','data-reduce-motion',state.settings.reduceMotion);
 function manualResponseWindowSetting(){const value=Math.max(0,Math.min(2000,Number(state.settings.manualResponseWindow??200)||0));return settingSlider('Response Window','How long you have to respond to an optional chain on the opponent’s turn before it passes.','manual-response-window',value,0,2000,50,' ms')}
-function gameplaySettings(){return settingToggle('Stack Duplicate Cards','Copies of the same card show as one card in the deck editor, with a dot for each copy. Misprints stay separate.','data-deck-stacks',stacksOn())+settingToggle('Pause When Tabbed Out','Pause single-player duels while the game is hidden.','data-pause-hidden',state.settings.pauseWhenHidden!==false)+settingToggle('Faster Animations','Your own actions play out quicker. The opponent keeps its pace.','data-faster-animations',state.settings.fasterAnimations)+settingToggle('Explain Unavailable Actions','Show a greyed-out Activate on cards you can’t activate right now; tap it to see why.','data-explain-actions',state.settings.explainActions!==false)+settingToggle('Controller Button Guide','Show which controller button does what in the bottom-left corner while you play with a controller.','data-pad-legend',padLegendOn())+settingToggle('Auto-Placement','Cards you summon, Set or activate go to a zone automatically, picked the way the opponent picks.','data-auto-placement',state.settings.autoPlacement)+manualResponseWindowSetting()+'<div class="set-row keyboard-shortcuts"><span class="set-text"><b>Keyboard Shortcuts</b><small>Space: next phase · Enter: confirm · C: chain prompts · L: duel log</small></span></div>'}
+function gameplaySettings(){return settingToggle('Act 3 Extreme Victory','Adds the 100-card Extreme Victory booster to Act 3 in new solo runs. Your current run keeps its own setting.','data-extreme-victory',state.settings.extremeVictory)+settingToggle('Stack Duplicate Cards','Copies of the same card show as one card in the deck editor, with a dot for each copy. Misprints stay separate.','data-deck-stacks',stacksOn())+settingToggle('Pause When Tabbed Out','Pause single-player duels while the game is hidden.','data-pause-hidden',state.settings.pauseWhenHidden!==false)+settingToggle('Faster Animations','Your own actions play out quicker. The opponent keeps its pace.','data-faster-animations',state.settings.fasterAnimations)+settingToggle('Explain Unavailable Actions','Show a greyed-out Activate on cards you can’t activate right now; tap it to see why.','data-explain-actions',state.settings.explainActions!==false)+settingToggle('Controller Button Guide','Show which controller button does what in the bottom-left corner while you play with a controller.','data-pad-legend',padLegendOn())+settingToggle('Auto-Placement','Cards you summon, Set or activate go to a zone automatically, picked the way the opponent picks.','data-auto-placement',state.settings.autoPlacement)+manualResponseWindowSetting()+'<div class="set-row keyboard-shortcuts"><span class="set-text"><b>Keyboard Shortcuts</b><small>Space: next phase · Enter: confirm · C: chain prompts · L: duel log</small></span></div>'}
 // Frame cap (2026-11-09): frame-cap.js, at most 120 frames a second; lower caps use less power.
 const fpsCapValue=()=>Math.max(30,Math.min(120,Math.round((Number(state.settings.fpsCap)||120)/10)*10));
 function duelBackgroundSetting(){return settingSlider('FPS Cap','Highest frames per second. Lower uses less power.','fps-cap',fpsCapValue(),30,120,10,' FPS')+settingToggle('Performance Mode','Fewer decorative effects and still backgrounds. Gameplay animations stay.','data-performance-mode',state.settings.performanceMode)+settingToggle('Simple Backgrounds','Static gradients for lower battery use.','data-simple-backgrounds',state.settings.simpleBackgrounds)+settingToggle('Compatibility Mode','Turns off filters and blur that flicker in some browsers.','data-compatibility-mode',compatibilityEnabled())}
@@ -2263,7 +2328,7 @@ let duelEnding=false;
 
 // Each ending (this win hold, the DEFEAT overlay, the card-win finale) runs 150 ms past its animation, so
 // the last effects and sounds finish before the next screen.
-async function completeDuel(winner){if(duelEnding)return;duelEnding=true;await waitForInspection();clearTimeout(aiTimer);if(winner===0)await updateCoinMilestones();await finishDuelAnimations(engine);if(isCardWin(snapshot.finished)){removeActions();if(modal.open)modal.close();engine.visuals=[];await playCardWin(snapshot.finished)}else if(winner===0){duelSound('specialsummon',.6);await duelDelay(1150)}renderDuel();await duelFinish(winner);await command('finish',{winner,lp:snapshot.lp[0],reason:snapshot.finished?.reason??0,events:engine.summary()});if(winner!==0)track('defeat');engine.destroy();snapshot=null;clearInterval(backgroundAnimationTimer);backgroundAnimationTimer=null;if(state.run.secret_challenge){go('title');return}go(state.run.stage==='shop'?'shop':'ending');if(winner===0&&!modal.querySelector('.reward-screen,.reward-tally'))showVictoryReceipt();await notices()}
+async function completeDuel(winner){if(duelEnding)return;duelEnding=true;await waitForInspection();clearTimeout(aiTimer);if(winner===0)await updateCoinMilestones();await finishDuelAnimations(engine);if(isCardWin(snapshot.finished)){removeActions();if(modal.open)modal.close();engine.visuals=[];await playCardWin(snapshot.finished)}else if(winner===0){duelSound('specialsummon',.6);await duelDelay(1150)}renderDuel();await duelFinish(winner);await command('finish',{winner,lp:snapshot.lp[0],reason:snapshot.finished?.reason??0,events:engine.summary()});if(winner!==0)track('defeat');engine.destroy();snapshot=null;clearInterval(backgroundAnimationTimer);backgroundAnimationTimer=null;if(state.run.secret_challenge){go('title');return}go(postDuelScreen());if(winner===0&&!modal.querySelector('.reward-screen,.reward-tally'))showVictoryReceipt();await notices()}
 
 let rewardPresentation=null;
 let rewardDeckReturn=false;
@@ -2473,6 +2538,16 @@ async function action(a,el={dataset:{}},silent=false){
 
  if(a==='reward-accept'){if(modal.querySelector('[data-do="reward-accept"]')?.disabled)return;if(tagUI)await tagUI.session.request('reward-accept',rewardPresentation?.selected);else await command('reward-accept',rewardPresentation?.selected);rewardPresentation?.destroy();rewardPresentation=null;modal.close();render();await showFreePacks();return;}
 
+ if(a==='act-starter'){await command('act-starter',el.dataset.pack);go('draft');openDraftPack(0,false);return}
+ if(a==='act-add-pack'){if(actPicks.length<state.run.act_transition.picks)actPicks.push(el.dataset.pack);renderActTransition();return}
+ if(a==='act-remove-pack'){actPicks.splice(+el.dataset.index,1);renderActTransition();return}
+ if(a==='act-carry'){const pid=el.dataset.pack;if(actCarry.has(pid))actCarry.delete(pid);else if(actCarry.size<state.run.act_transition.carry_limit)actCarry.add(pid);renderActTransition();return}
+ if(a==='act-claim'){await command('act-transition',{packs:actPicks,carry:[...actCarry]});go('shop');return}
+ if(a==='pin-booster-dialog'){showPinOptions();return}
+ if(a==='pin-booster'){await command('pin-booster',el.dataset.pack||null);shopSelection.clear();closeDialog();render();return}
+ if(a==='preview-win'){showVictoryTargets(+el.dataset.opponent);return}
+ if(a==='reward-target'){const opponent=+el.dataset.opponent;await command('reward-target',{opponent,card:+el.dataset.card});closeDialog();renderRoutes();return}
+
  if(a==='reward-details'){const previous={nodes:[...modal.childNodes],scroll:modal.scrollTop,focus:document.activeElement,parent:inspectParent};dialog('Victory coin breakdown',victoryRewardsMarkup(state.run.last_rewards,content.battleBonusLabels,secretCoinLabels()));inspectParent=previous;return;}
 
  if(a==='reward-deck'){if(!modal.querySelector('.reward-screen')||!state.run?.reward_slots?.pending)return;rewardDeckReturn=true;modal.close();go('draft');return;}
@@ -2522,11 +2597,11 @@ if(a==='defeated-collector-deck'){showDefeatedCollector(+el.dataset.index);retur
  if(a==='continue')return showRunSlots();
 
  // A shadow relic can complete a fusion set; play its reveal here, since the shop's own check skips while this action is busy (2026-11-05).
- if(a==='cursed-choose'){await command('cursed-choose',el.dataset.relic);go('shop');await showRelicFusions();return}
+ if(a==='cursed-choose'){await command('cursed-choose',el.dataset.relic);go(postDuelScreen());await showRelicFusions();return}
 
  if(a==='cursed-reroll'){await command('cursed-reroll');render();return}
 
- if(a==='cursed-skip'){await command('cursed-skip');go('shop');return}
+ if(a==='cursed-skip'){await command('cursed-skip');go(postDuelScreen());return}
 
  if(a==='load-slot'){await command('select-slot',Number(el.dataset.slot));modal.close();if(state.run.stage==='duel')return startDuel(true);go(['complete','gameover'].includes(state.run.stage)?'ending':state.run.stage);return}
 
@@ -2972,7 +3047,7 @@ async function inspectPack(pid){
 
  try{
 
-  const entries=await command('pack-inspect',pid);if(!panel.isConnected)return;
+  const entries=await command('pack-inspect',{id:pid,campaign:!!state.run?.act&&['starter','draft','routes','shop','act_transition'].includes(screen)});if(!panel.isConnected)return;
 
   const unregistered=entries.filter(x=>!registeredCard(x.id)).length;
 
@@ -3473,3 +3548,10 @@ document.addEventListener('contextmenu',e=>{if(e.pointerType==='touch'||performa
 function modifierRowsMarkup(rows=[]){if(!rows.length)return '<p>No active curses or LVL modifiers.</p>';return `<div class="active-modifier-list">${rows.map(row=>{let art='';if(row.kind==='curse'&&row.key)art=`<span class="curse-icon curse-${esc(row.key)}" aria-hidden="true"><img src="${curseIconFile(row.key)}" alt=""></span>`;else if(row.kind==='opponent-relic'&&row.id){const info=content.artifactInfo[row.id];art=info?.art?relicArtwork(relicImage(info.art)):`<span class="modifier-generic-icon">${relicEyeIcon}</span>`;}else if(row.kind==='level'){const level=Number(row.name.match(/-?\d+/)?.[0]??0);art=`<span class="level-badge challenge-level-badge modifier-level-image" data-challenge-level="${level}" aria-hidden="true"><span>LVL</span><img src="assets/icons/level-star.png" alt=""><strong>${level}</strong></span>`;}return `<section class="panel active-modifier-row"><div class="active-modifier-art">${art}</div><div class="active-modifier-copy"><h3>${esc(row.name)}</h3><p>${esc(row.description)}</p></div></section>`;}).join('')}</div>`;}
 function duelCurseMarkup(){const r=state.run||{},enemies=[...new Set([r.opponent_relic,...(r.opponent_relics||[]),...((r.curses||[]).includes('relic_mirror')?r.mirrored_relics||[]:[])])].filter(id=>content.artifactInfo[id]);return (r.curses?.length||enemies.length)?`<div class="active-curse-strip" aria-label="Active curses and opponent relics">${curseIcons(content,r.curses||[])}${enemies.map(enemy=>`<button data-do="active-curses" data-enemy-relic="${enemy}" aria-label="Opponent relic: ${esc(content.artifacts[enemy]?.[0])}">${relicArtwork(relicImage(content.artifactInfo[enemy].art))}</button>`).join('')}</div>`:'';}
 
+
+document.addEventListener('change', async ({target})=>{
+ if(!target.matches?.('[data-extreme-victory]'))return;
+ const previous=!!state.settings.extremeVictory;
+ try{await command('settings',{...state.settings,extremeVictory:target.checked});}
+ catch(error){target.checked=previous;toast(error.message);}
+});

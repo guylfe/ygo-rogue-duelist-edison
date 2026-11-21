@@ -21,8 +21,8 @@ const start = (states) => {
    const [name,position='POS_FACEUP_ATTACK']=Array.isArray(value)?value:[value];
    lua.push(add(name,p,'LOCATION_MZONE',i,position));
   });
-  for (const [zone,cards] of [['EXTRA',state.extra],['HAND',state.hand],['DECK',Array(12).fill('Battle Ox')]])
-   (cards || []).forEach(name => lua.push(add(name,p,'LOCATION_'+zone,0,'POS_FACEDOWN_DEFENSE')));
+  for (const [zone,cards] of [['EXTRA',state.extra],['HAND',state.hand],['GRAVE',state.grave],['DECK',state.deck||Array(12).fill('Battle Ox')]])
+   (cards || []).forEach(name => lua.push(add(name,p,'LOCATION_'+zone,0,zone==='GRAVE'?'POS_FACEUP_ATTACK':'POS_FACEDOWN_DEFENSE')));
  }
  duel.start([],[],8000,8000,0,2211,[],[],lua.concat('Debug.ReloadFieldEnd()').join('\n'),0);
  duel.core.startDuel(duel.h);
@@ -101,6 +101,41 @@ try {
  assert.ok(zone(1,L.MZONE).includes('Gemini Elf'),'CPU kept its stronger Level 4');
  assert.ok(zone(1,L.GRAVE).includes('Battle Ox'));
  console.log('PASS CPU chooses cheaper of two valid material combinations');
+ duel.destroy();
+
+ const holds=cpu([{}, {field:['Cyber Dragon','Psychic Commander'],extra:[STARDUST]}],()=>duel.turn===3);
+ const heldPastBattle=holds.some(({m,phase})=>m.type===M.SELECT_IDLECMD&&phase===256&&m.special_summons.some(c=>c.code===id(STARDUST)));
+ assert.ok(heldPastBattle,'CPU sees a legal summon after battle');
+ assert.ok(holds.every(({m,r})=>m.type!==M.SELECT_IDLECMD||r.action!==I.SELECT_SPECIAL_SUMMON));
+ assert.deepEqual(zone(1,L.MZONE),['Cyber Dragon','Psychic Commander']);
+ console.log('PASS CPU declines legal Stardust through end of turn when retaining both bodies is stronger');
+ duel.destroy();
+
+ const revived=cpu([{field:['Summoned Skull']},{field:['Goblin Zombie'],grave:[PLAGUE],hand:['Waboku'],extra:[IRON_CHAIN]}],
+  ()=>zone(1,L.MZONE).includes(IRON_CHAIN));
+ assert.ok(revived.some(({m,r})=>m.type===M.SELECT_IDLECMD&&r.action===I.SELECT_ACTIVATE&&m.activates[r.index].code===id(PLAGUE)));
+ assert.ok(zone(1,L.REMOVED).includes(PLAGUE),'revived Plaguespreader was banished as material');
+ assert.ok(!zone(1,L.HAND).includes('Waboku'),'CPU paid the top-of-deck cost');
+ console.log('PASS Bonz policy pays the Plaguespreader cost for a useful Synchro');
+ duel.destroy();
+
+ const preserved=cpu([{}, {field:['Vorse Raider'],grave:[PLAGUE],hand:['Waboku'],extra:['Gaia Knight, the Force of Earth']}],()=>duel.turn===3);
+ assert.ok(preserved.every(({m,r})=>m.type!==M.SELECT_IDLECMD||r.action!==I.SELECT_ACTIVATE||m.activates[r.index].code!==id(PLAGUE)));
+ assert.ok(zone(1,L.GRAVE).includes(PLAGUE),'CPU holds the revival when the board does not justify its cost');
+ console.log('PASS Bonz policy holds Plaguespreader without a worthwhile Synchro');
+ duel.destroy();
+
+ const tengu='Reborn Tengu', gaia='Gaia Knight, the Force of Earth';
+ start([{field:[PLAGUE,tengu],extra:[gaia],deck:[tengu,...Array(12).fill('Battle Ox')]}]);
+ const tenguSummon=duel.choices().find(c=>c.code===id(gaia)&&c.label.startsWith('Synchro summon'));
+ assert.ok(tenguSummon);
+ duel.respond(tenguSummon.response);
+ for(let i=0;i<20&&!(zone(0,L.MZONE).includes(gaia)&&zone(0,L.GRAVE).includes(tengu)&&zone(0,L.MZONE).includes(tengu));i++)duel.respond(duel.auto());
+ assert.ok(zone(0,L.GRAVE).includes(tengu));
+ assert.ok(zone(0,L.MZONE).includes(gaia));
+ assert.ok(zone(0,L.MZONE).includes(tengu),'the second Tengu was summoned from the deck');
+ assert.deepEqual(duel.errors,[]);
+ console.log('PASS Reborn Tengu leaves as material and its replacement resolves in the shared duel core');
  duel.destroy();
 
  function shuffled(deck, seed) {

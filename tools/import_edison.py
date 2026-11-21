@@ -21,7 +21,7 @@ PACK_CATEGORIES = {'Booster Packs', 'Duelist Packs'}
 PACK_CODE_OVERRIDES = {
     '11106002': 'PP01', '11107003': 'PP02', '11106005': 'DR04',
     '11107007': 'YAP1', '16601000': 'DP1', '16601001': 'DP2',
-    '11104004': 'CRV', '11104006': 'EEN',
+    '11104004': 'CRV', '11104006': 'EEN', '11107001': 'LODT',
 }
 # Konami files the JUMP issue under its cover month and lists the prize in a later reprint.
 # The playable SJCS printing predates that reprint.
@@ -67,6 +67,9 @@ def set_index(ygojson):
             locale = locales.get(key, {})
             for pid in locale.get('externalIDs', {}).get('dbIDs', []):
                 by_pid.setdefault(str(pid), (row['name']['en'], locale.get('prefix'), locale.get('image')))
+    # Konami's newer archive ID shares the TCG product identity with the original checklist.
+    if '161601230' in by_pid:
+        by_pid['11107001'] = by_pid['161601230']
     return by_pid
 
 
@@ -82,8 +85,10 @@ def make_pack(code, name, date, prints, source, art=None, shop_only=False):
     return row
 
 
-def compile_catalog(products, source_zip):
+def compile_catalog(products, source_zip, extreme_victory=False):
     base = load(ROOT / 'data/era-cards.json')
+    if extreme_victory:
+        base += load(ROOT / 'data/edison-cards.json')
     old_packs = load(ROOT / 'data/packs.json')
     existing_packs = {row['id'] for row in old_packs}
     engine_cards = load(ROOT / 'android/web/engine-data.json')
@@ -98,10 +103,17 @@ def compile_catalog(products, source_zip):
     releases = defaultdict(list)
     packs = []
     selected_cards = {}
-    for product in sorted([*products, DARK_END], key=lambda row: (product_date(row) or '9999', row['pid'])):
+    if extreme_victory:
+        products = [row for row in products if row['pid'] == '11110003']
+        if len(products) != 1 or len(products[0]['cards']) != 100:
+            raise ValueError('Expected the official 100-card North American Extreme Victory checklist.')
+    else:
+        products = [*products, DARK_END]
+    cutoff = '2011-05-10' if extreme_victory else CUTOFF
+    for product in sorted(products, key=lambda row: (product_date(row) or '9999', row['pid'])):
         date = product_date(product)
         # Duel Terminal previews are not retail TCG availability for this historical cutoff.
-        if not date or date > CUTOFF or product['category'] == 'Duel Terminal Cards':
+        if not date or date > cutoff or product['category'] == 'Duel Terminal Cards':
             continue
         prints = defaultdict(list)
         for konami_id, name, rarity in product['cards']:
@@ -127,7 +139,10 @@ def compile_catalog(products, source_zip):
         if product['category'] not in PACK_CATEGORIES or date <= PREVIOUS_CUTOFF or len(prints) < 9:
             continue
         pack_name, prefix, art = set_metadata.get(product['pid'], (product['name'].title(), None, None))
-        code = PACK_CODE_OVERRIDES.get(product['pid']) or (prefix or '').split('-')[0]
+        if extreme_victory:
+            pack_name, code = 'Extreme Victory', 'EXVC'
+        else:
+            code = PACK_CODE_OVERRIDES.get(product['pid']) or (prefix or '').split('-')[0]
         if not code:
             continue  # cards from these checklists remain in the joint reward booster
         if f'EN-{code}' in existing_packs:
@@ -168,6 +183,13 @@ def compile_catalog(products, source_zip):
                                   defense=data['defense'], date=releases[code][0]['date'],
                                   sets=releases[code], image=f'https://images.ygoprodeck.com/images/cards/{code}.jpg',
                                   data=data, strings=strings))
+    if extreme_victory:
+        if len(packs) != 1 or len(packs[0]['common'] + packs[0]['rare']) != 100:
+            raise ValueError('The Extreme Victory pack must have all 100 distinct cards.')
+        write('extreme-victory-cards.json', new_cards)
+        write('extreme-victory-pack.json', packs)
+        print(f'Wrote 100 Extreme Victory printings and {len(new_cards)} optional card records.')
+        return
     covered = {cid for row in packs for cid in row['common'] + row['rare']}
     uncovered = {
         row['id']: [releases[row['id']][0]['rarity']]
@@ -187,8 +209,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('products', type=Path)
     parser.add_argument('ygojson', type=Path)
+    parser.add_argument('--extreme-victory', action='store_true')
     args = parser.parse_args()
-    compile_catalog(load(args.products), args.ygojson)
+    compile_catalog(load(args.products), args.ygojson, args.extreme_victory)
 
 
 if __name__ == '__main__':

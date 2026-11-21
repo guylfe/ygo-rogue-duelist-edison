@@ -7,6 +7,7 @@ import campaign
 
 def generate():
  import content,card_rarity
+ from campaign_acts import OPTIONAL_CARDS
  ids=lambda names:[campaign.BY_NAME[n]['id'] for n in names]
  # A second loadout carries its own signature card ids (Draft Duels, user 2026-11-16).
  def character(i):
@@ -16,7 +17,7 @@ def generate():
  draft={'characters':[character(i) for i in content.PLAYABLE_IDS], 'packs':content.PACKS,'weights':{str(c['id']):card_rarity.weight(c['id']) for c in campaign.CARDS if card_rarity.weight(c['id'])!=1}}
  (ROOT/'multiplayer/cloudflare/draft-catalog.json').write_text(json.dumps(draft,separators=(',',':')),encoding='utf-8')
  generate_draft_relics()
- cards=[{'id':c['id'],'name':c['name'],'type':c['type'],'data':{'type':c['data']['type'],'alias':c['data'].get('alias',0)}} for c in campaign.CARDS]
+ cards=[{'id':c['id'],'name':c['name'],'type':c['type'],'data':{'type':c['data']['type'],'alias':c['data'].get('alias',0)}} for c in campaign.CARDS if c['id'] not in OPTIONAL_CARDS]
  (ROOT/'multiplayer/cloudflare/collector-cards.json').write_text(json.dumps(cards,separators=(',',':')),encoding='utf-8')
  rules=json.loads((ROOT/'data/collector-banlist.json').read_text(encoding='utf8'))
  limits={c['id']:rules['names'][c['name']] for c in campaign.CARDS if c['name'] in rules['names']}

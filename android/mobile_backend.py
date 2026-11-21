@@ -1,6 +1,7 @@
 """Thin mobile transport over the shared campaign rules."""
 import json, random, re
 import campaign as g, content, storage, achievement_model, passives, random_cards
+import campaign_acts as acts
 
 run=None
 tag_session=None
@@ -17,11 +18,11 @@ def state():
  import sleeve_progress
  if sleeve_progress.evaluate(profile):storage.write(storage.ROOT/'profile.json',profile)
  # randomCards changes when the run's randomized cards do; the client then asks for them ('random-cards').
- return dict(registeredCards=cards,history=history,run=run,slots=slots,activeSlot=slot,profile=profile,settings=storage.settings(),achievements=achievement_model.entries(profile),randomCards=random_cards.client_key(run))
+ return dict(registeredCards=cards,history=history,run=run,slots=slots,activeSlot=slot,profile=profile,settings=storage.settings(),achievements=achievement_model.entries(profile),randomCards=random_cards.client_key(run),actPinOptions=acts.pin_options(run) if run else [])
 
 def restartable(r):
  """A run can be restarted with R until its first duel ends: first loop, no duel won or lost yet."""
- return bool(r) and not r.get('loop') and int(r.get('round',0))==0 and r.get('stage') not in ('gameover','complete') and not r.get('secret_challenge') and r.get('history_mode')!='tag'
+ return bool(r) and not r.get('loop') and r.get('act',1)==1 and int(r.get('round',0))==0 and r.get('stage') not in ('gameover','complete') and not r.get('secret_challenge') and r.get('history_mode')!='tag'
 
 def dispatch(raw):
  global run,tag_session
@@ -51,7 +52,10 @@ def dispatch(raw):
   return partial(dict(key=random_cards.client_key(run),cards=random_cards.client_cards() if run and run.get('random_cards') else []))
  if action=='pack-inspect':
   from pack_odds import inspect_pack
-  return json.dumps(dict(result=inspect_pack(value,storage.profile())),ensure_ascii=False)
+  pid=value['id'] if isinstance(value,dict) else value
+  view=run if isinstance(value,dict) and value.get('campaign') else None
+  if view and pid in (view.get('act_transition') or {}).get('choices',[]):view=dict(view,act=view['act_transition']['incoming'])
+  return json.dumps(dict(result=inspect_pack(pid,storage.profile(),view)),ensure_ascii=False)
  if action.startswith('device-sync-'):
   import progress_sync
   result=progress_sync.dispatch(action[12:],value)
@@ -115,7 +119,7 @@ def dispatch(raw):
   value=value if isinstance(value,dict) else {'character':int(value)}
   slot=int(value.get('slot',storage.active_slot()));storage.run_path(slot)
   if storage.read(storage.run_path(slot)) and not value.get('replace'):raise ValueError('Confirm before replacing this saved run.')
-  candidate=g.new_run(int(value['character']),level=int(value.get('level',0)),variant=int(value.get('variant',0)));candidate['_save_slot']=slot
+  candidate=g.new_run(int(value['character']),level=int(value.get('level',0)),variant=int(value.get('variant',0)),act_campaign=True,extreme_victory=storage.settings()['extremeVictory']);candidate['_save_slot']=slot
   # The character's saved card marks (Character settings) start every new run.
   if storage.saved_marks(candidate['character']):candidate['card_marks']=storage.saved_marks(candidate['character'])
   g.save(candidate);storage.record_run_start(candidate);storage.select_slot(slot);run=candidate
@@ -125,7 +129,7 @@ def dispatch(raw):
   # only until the first duel of the run has ended.
   if not restartable(run):raise ValueError('The run can only be restarted before the end of its first duel.')
   slot=storage.active_slot()
-  candidate=g.new_run(int(run['character']),level=int(run.get('challenge_level',0)),variant=int(run.get('variant',0)));candidate['_save_slot']=slot
+  candidate=g.new_run(int(run['character']),level=int(run.get('challenge_level',0)),variant=int(run.get('variant',0)),act_campaign=acts.active(run),extreme_victory=run.get('extreme_victory',False));candidate['_save_slot']=slot
   # The character's saved card marks (Character settings) start every new run.
   if storage.saved_marks(candidate['character']):candidate['card_marks']=storage.saved_marks(candidate['character'])
   g.save(candidate);storage.record_run_start(candidate);storage.select_slot(slot);run=candidate
@@ -169,9 +173,17 @@ def dispatch(raw):
    if limit is not None and sum(g.limit_identity(run['pool'][i])==g.limit_identity(cid) for i in selected)>=limit:raise ValueError('Maximum three copies of a card.' if limit==3 else 'Singleton Pact allows only 1 copy of each card.')
    selected.append(index)
   run['selected']=selected
+ elif action=='act-starter':acts.choose_starter(run,value)
+ elif action=='act-transition':acts.transition(g,run,value,random)
+ elif action=='pin-booster':acts.pin(run,value)
+ elif action=='reward-target':
+  opponent=str(int(value['opponent']));cid=int(value['card'])
+  if int(opponent) not in run['routes'] or cid not in run.get('route_examples',{}).get(opponent,[]) or content.fixed_deck(run) or content.CHARACTERS[run['character']].get('engine_deck'):raise ValueError('Choose an available victory card.')
+  run.setdefault('reward_targets',{})[opponent]=cid
  elif action=='choose':
-  if int(value) not in run['routes']:raise ValueError('Unavailable opponent')
+  if int(value) not in run['routes'] or run.get('stage') in ('starter','act_transition'):raise ValueError('Unavailable opponent')
   run['opponent']=int(value)
+  if acts.active(run):run['reward_target']=run.get('reward_targets',{}).get(str(value))
   if content.copies_deck(run):g.copy_deck(run)
   if content.CHARACTERS[run['character']].get('engine_deck'):g.engine_deck(run)
  elif action=='begin':
@@ -205,8 +217,8 @@ def dispatch(raw):
   fallen=fallen_collectors.opponent(run,opponent)
   if fallen:result=fallen['deck']['main']+fallen['deck']['extra']
   else:
-   main=g.opponent_deck(content.deck_round(run),random.Random(opponent+run['round']*101),opponent,run.get('tutorial_variants',{}).get(str(opponent),0),loop=run.get('loop',0))
-   extra=[] if content.deck_round(run)==0 and not run.get('loop') else content.opponent_record(content.deck_round(run),opponent,run.get('loop',0))['extra']
+   record=g.run_opponent_record(run,opponent)
+   main,extra=record['main'],record['extra']
    result=main+extra
  elif action=='cursed-choose':
   import cursed_relics

@@ -180,7 +180,7 @@ def has(run,key):
  from relic_fusions import includes
  return includes(run,key)
 
-def encounter_key(run):return str(run.get('loop',0))+':'+str(run.get('round',0))
+def encounter_key(run):return ':'.join(map(str,([run['act']] if run.get('act') else [])+[run.get('loop',0),run.get('round',0)]))
 
 def free_use(run,relic,kind):return has(run,relic) and run.get('jar_'+kind+'_used')!=encounter_key(run)
 
@@ -211,6 +211,9 @@ def minimum(run):
  if fixed_deck(run):return 20
  # Derive from completed rounds so existing saves and repeat loops agree.
  progress=run.get('secret_deck_minimum',40) if run.get('secret_challenge') else 40 if run.get('loop',0)>0 else min(40,20+10*(max(0,run.get('round',0))//BOSS_EVERY))
+ if run.get('act') and not run.get('secret_challenge'):
+  from campaign_acts import base_minimum
+  progress=base_minimum(run)
  if has(run,'cursed_singleton_pact'):return 20
  # A secret challenge keeps its own minimum, so Deck Thinning does not lower it.
  thinning=0 if run.get('secret_challenge') else copies(run,'deck_thinning')

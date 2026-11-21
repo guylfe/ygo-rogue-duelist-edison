@@ -4079,3 +4079,9 @@ html.performance-mode .shop-product.shop-deck::before,html.compatibility-mode .s
 .tag-trade .cardbtn small.trade-requested{display:block;margin:2px auto 0;width:max-content;padding:0 6px;border-radius:4px;background:#ffd86e;color:#2a1600;font-weight:bold}
 /* ★ Marked Yes and ? Randomized only in the search window (user, 2026-11-20), drawn like the effect icons. */
 .effect-icon-grid .search-flag span{display:block;width:26px;height:26px;margin:auto;font:bold 22px/26px serif;color:#ffd46c;text-shadow:0 1px 2px #000}
+.act-choices{display:block;padding:16px;overflow:auto}
+.act-pack-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(116px,1fr));gap:8px}
+.act-pack-choice{display:grid;justify-items:center;gap:6px;align-content:start;padding:7px;text-align:center}
+.act-pack-choice img{width:auto;height:80px;max-width:100%;object-fit:contain}
+.act-pack-choice[aria-pressed=true]{outline:2px solid #e6bf68;outline-offset:-2px}
+.act-selection,.act-tools{padding:8px}

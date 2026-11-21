@@ -414,7 +414,10 @@ def route_rewards(routes,rng,profile=None,runs=None):
   pick=rng.choices(range(len(keys)),weights=use,k=1)[0]
   chosen_keys.append(keys.pop(pick));weights.pop(pick)
  if deck:rng.shuffle(chosen_keys)
- packs=[p['id'] for p in PACKS if not p.get('draft_only') and pack_offered(p,rng) and unlocks.available('pack',p['id'],profile)]
+ from campaign_acts import active, rotation
+ allow_act=isinstance(runs,dict) and active(runs)
+ candidates=(PACK_BY_ID[pid] for pid in rotation(runs)) if allow_act else PACKS
+ packs=[p['id'] for p in candidates if (allow_act or not p.get('draft_only')) and pack_offered(p,rng) and unlocks.available('pack',p['id'],profile)]
  if len(packs)>=count:chosen_packs=rng.sample(packs,count)
  else:
   chosen_packs=rng.sample(packs,len(packs));chosen_packs+=[rng.choice(packs or ['EN-LOB']) for _ in range(count-len(chosen_packs))]

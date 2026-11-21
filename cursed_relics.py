@@ -55,7 +55,7 @@ def choose(run,key,rng=random):
 def finish(run,rng=random):
  run.pop('cursed_offer',None)
  import campaign
- campaign.restock(run,rng)
+ if run.get('stage')!='act_transition':campaign.restock(run,rng)
 
 def skip(run,rng=random):
  """Champion Trophy extra picks are optional; the first pick never is."""

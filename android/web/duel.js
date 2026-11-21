@@ -1,4 +1,4 @@
-import {isSynchro,synchroChoice,synchroMaterialResponse} from './synchro-policy.js';
+import {isSynchro,synchroChoice,synchroMaterialResponse,PLAGUESPREADER} from './synchro-policy.js';
 import {rankedDecision} from './cpu-ranking.js';
 import {tributeSelection} from './cpu-card-plans.js';
 import {trackEffectTargets} from './selection-feedback.js';
@@ -421,7 +421,9 @@ for(const side of s.players)for(const c of [...side.monsters,...side.spells])if(
    const godForGod=own.some(c=>egyptianGods.has(this.name(c.code)))&&own.filter(c=>!egyptianGods.has(this.name(c.code))).length<3;
    const godSummon=godForGod?-1:m.summons.findIndex(c=>egyptianGods.has(this.name(c.code)));
    if(godSummon>=0)return idle(I.SELECT_SUMMON,godSummon);
-   const activate=m.activates.map((c,index)=>({c,index,name:this.name(c.code),text:desc(c)})).filter(x=>safeCost(x.c));
+   const synchro=synchroChoice(this,m,smart,own,enemy,strength);
+   const activate=m.activates.map((c,index)=>({c,index,name:this.name(c.code),text:desc(c)}))
+    .filter(x=>!(x.c.code===PLAGUESPREADER&&x.c.location===L.GRAVE)&&safeCost(x.c));
    const planned=activate.map(x=>({...x,score:smart.activation(x.c,false)})).filter(x=>x.score!==null&&x.score>=80).sort(rank);
    // Draw first, and lay a Field Spell before the summons it boosts or triggers on.
    const fieldFirst=activate.find(x=>(stat(x.c).type&0x80000)&&x.c.location===L.HAND&&!this.query(p,L.SZONE)[5]&&(smart.activation(x.c,false)??-1)>=0);
@@ -465,7 +467,7 @@ for(const side of s.players)for(const c of [...side.monsters,...side.spells])if(
     return smart.cyberJarFlipUseful(this.query(p,L.HAND).filter(Boolean).length-1-spellSets)===true;
    });
    if(cyberJarFlip>=0)return idle(I.SELECT_POS_CHANGE,cyberJarFlip);
-   const synchro=synchroChoice(this,m,smart,own,enemy,strength);
+   if(synchro?.kind==='revive')return idle(I.SELECT_ACTIVATE,synchro.index);
    if(synchro?.kind==='special'){this.synchroPlan=synchro;return idle(I.SELECT_SPECIAL_SUMMON,synchro.index);}
    const specialCandidates=ranked(m.special_summons).filter(x=>!(x.c.location===L.EXTRA&&isSynchro(stat(x.c)))&&smart.specialOk(x.c)!==false);
    // Megarock Dragon's printed database ATK is a placeholder; compare its
@@ -538,6 +540,10 @@ for(const side of s.players)for(const c of [...side.monsters,...side.spells])if(
    // can legally move to Main Phase 2 or the End Phase.
    if(!best&&!m.to_m2&&!m.to_ep&&m.attacks.length){const forced=m.attacks.map((c,i)=>({i,a:own.find(x=>x.sequence===c.sequence)||c,power:atk(own.find(x=>x.sequence===c.sequence)||c)})).filter(x=>{const targets=enemy.filter(t=>x.power>strength(t));return !targets.length||targets.some(t=>!smart.attackBackfires(x.a,t))}).sort((a,b)=>b.power-a.power);best=forced[0]||null;}
    return best?{type:R.SELECT_BATTLECMD,action:B.SELECT_BATTLE,index:best.i}:{type:R.SELECT_BATTLECMD,action:m.to_m2?B.TO_M2:B.TO_EP,index:null}}
+  if(m.type===M.SELECT_CARD&&this.effect?.code===PLAGUESPREADER&&m.selects.length&&m.selects.every(c=>c.controller===p&&c.location===L.HAND)){
+   const costs=m.selects.map((c,i)=>({i,value:smart.handLoss(c)})).sort((a,b)=>a.value-b.value);
+   return {type:R.SELECT_CARD,indicies:[costs[0].i]};
+  }
   if(m.type===M.SELECT_SUM){
    // Keep engine legality checks, but try expendable materials before valuable bodies.
    const order=m.selects.map((c,i)=>({c,i})).sort((a,b)=>smart.expendable(live(a.c)||a.c)-smart.expendable(live(b.c)||b.c));
