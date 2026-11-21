@@ -414,13 +414,18 @@ def route_rewards(routes,rng,profile=None,runs=None):
   pick=rng.choices(range(len(keys)),weights=use,k=1)[0]
   chosen_keys.append(keys.pop(pick));weights.pop(pick)
  if deck:rng.shuffle(chosen_keys)
- from campaign_acts import active, rotation
+ from campaign_acts import active, home_pack, rotation
  allow_act=isinstance(runs,dict) and active(runs)
  candidates=(PACK_BY_ID[pid] for pid in rotation(runs)) if allow_act else PACKS
  packs=[p['id'] for p in candidates if (allow_act or not p.get('draft_only')) and pack_offered(p,rng) and unlocks.available('pack',p['id'],profile)]
- if len(packs)>=count:chosen_packs=rng.sample(packs,count)
+ signatures=[home_pack(runs,i) for i in order] if allow_act else [None]*count
+ regular_count=signatures.count(None)
+ packs=[pid for pid in packs if pid not in signatures]
+ if len(packs)>=regular_count:chosen_packs=rng.sample(packs,regular_count)
  else:
-  chosen_packs=rng.sample(packs,len(packs));chosen_packs+=[rng.choice(packs or ['EN-LOB']) for _ in range(count-len(chosen_packs))]
+  chosen_packs=rng.sample(packs,len(packs));chosen_packs+=[rng.choice(packs or ['EN-LOB']) for _ in range(regular_count-len(chosen_packs))]
+ regular=iter(chosen_packs)
+ chosen_packs=[pid or next(regular) for pid in signatures]
  return {str(route):dict(key=key,label=LABELS.get(key,key+' monsters'),pack=pack) for route,key,pack in zip(order,chosen_keys,chosen_packs)}
 
 

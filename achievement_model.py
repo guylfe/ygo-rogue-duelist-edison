@@ -1,9 +1,10 @@
 import campaign as game,storage,unlocks
-from content import CHARACTERS,PLAYABLE_IDS
+from content import CHARACTERS,PLAYABLE_IDS,EDISON_DUELISTS
 
 def entries(profile=None):
  p=profile or storage.profile();rows=[]
  for i in PLAYABLE_IDS[2:]:
+  if i in EDISON_DUELISTS:continue
   metric,target=game.unlock_rule(i)
   value=int(int(metric.split(':')[1]) in p['won_as']) if metric.startswith('won_as:') else p.get(metric,0)
   if 'character:'+str(i) in p.get('synced_achievements',[]):value=max(value,target)

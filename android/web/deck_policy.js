@@ -152,7 +152,7 @@ export function deckPolicy(x){
   return {used,score:atk(f)-fieldCost+(name(f)==='Gatling Dragon'&&enemy.length>=2?1800:0)};
  }
  // Reaper on the Nightmare earns its place with direct attacks past their monsters and a random discard, not its ATK (2026-11-06).
- const fusionChoices=(graveOK=false)=>q(p,L.EXTRA).map(c=>({c,plan:fusionPlan(c,graveOK&&race(c)==='Machine')})).filter(a=>a.plan&&a.plan.score>=0&&(atk(a.c)>threat||name(a.c)==='Gatling Dragon'&&enemy.length>=2||name(a.c)==='Reaper on the Nightmare'&&enemy.length>0&&effectsEnabled(p)));
+ const fusionChoices=(graveOK=false)=>q(p,L.EXTRA).map(c=>({c,plan:fusionPlan(c,graveOK&&race(c)==='Machine')})).filter(a=>a.plan&&a.plan.score>=0&&(atk(a.c)>threat||name(a.c)==='Gatling Dragon'&&enemy.length>=2||name(a.c)==='Reaper on the Nightmare'&&enemy.length>0&&effectsEnabled(p)||name(a.c)==='Ojama King'&&enemy.length<=2&&effectsEnabled(p)));
  function activation(c,chain){const n=name(c),d=data(c),spent=c.location===L.GRAVE||c.location===L.REMOVED;
   if(n==='Blind Destruction')return blindDestructionValue();
   if(n==='Needle Wall')return needleWallValue();

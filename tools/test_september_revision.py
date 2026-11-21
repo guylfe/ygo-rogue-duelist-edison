@@ -27,8 +27,9 @@ for _ in c.PLAYABLE_IDS:
 assert not others
 # data/character-progression.json has always mixed win-as unlocks with achievement unlocks (17 of 34
 # since the initial import), so the old ">80% won_as" ratio never held; check each rule is well formed.
-rules=[g.unlock_rule(i) for i in c.PLAYABLE_IDS if i>1]
-assert sum(k.startswith('won_as:') for k,_ in rules)>=len(rules)//2 and all(t>0 and g.unlock_text(i) for i,(k,t) in zip([i for i in c.PLAYABLE_IDS if i>1],rules))
+legacy_unlocks=[i for i in c.PLAYABLE_IDS if i>1 and i not in c.EDISON_DUELISTS]
+rules=[g.unlock_rule(i) for i in legacy_unlocks]
+assert sum(k.startswith('won_as:') for k,_ in rules)>=len(rules)//2 and all(t>0 and g.unlock_text(i) for i,(k,t) in zip(legacy_unlocks,rules))
 # Rare offers keep the opponent booster and cost exactly 200.
 r=g.new_run(0,random.Random(4));g.auto_deck(r);r.update(stage='shop',gold=1000,gold_leaving_shop=10000)
 for seed in range(100):
@@ -64,7 +65,7 @@ for reason in loss_reason.REASONS:assert loss_reason.describe({'reason':int(reas
 assert loss_reason.describe({'reason':16},g.BY_ID)['card']==g.BY_NAME['Exodia the Forbidden One']['id']
 assert loss_reason.describe({'reason':21},g.BY_ID)['card']==g.BY_NAME['Destiny Board']['id']
 # Reset must wipe the recovery copies too, while leaving settings intact.
-storage.write(base/'settings.json',{'music':17});storage.reset_progress();assert storage.profile()['unlocked']==[0,1]
+storage.write(base/'settings.json',{'music':17});storage.reset_progress();assert storage.profile()['unlocked']==[0,1,*c.EDISON_DUELISTS]
 assert storage.read(base/'run.json') is None and storage.read(base/'run.bak') is None
 assert storage.read(base/'settings.json')['music']==17
 print('PASS: 175 drafts, unique signature packs, reachable unlock graph, additive rare deck purchases, quick-win/underdog rewards, NPC package checks, loss reasons and isolated progress reset')

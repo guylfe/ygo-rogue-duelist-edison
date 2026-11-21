@@ -175,7 +175,7 @@ def install(g):
     key=g.limit_identity(r['pool'][i])
     if ar.copy_limit(r) is None or counts[key]<ar.copy_limit(r):selected.append(i);counts[key]+=1
    r['selected']=selected
-   if r['stage']!='duel' and not r.get('encore_active') and (len(r['routes'])!=(1 if (r['round']+1)%BOSS_EVERY==0 else 5) or any(i not in eligible_opponents(deck_round(r),r.get('loop',0)) or i==r['character'] or i in r.get('defeated_opponents',[]) for i in r['routes'])) and r['round']<RUN_LENGTH:routes(r)
+   if r['stage']!='duel' and not r.get('encore_active') and (len(r['routes'])!=(1 if (r['round']+1)%BOSS_EVERY==0 else 5) or any(i not in eligible_opponents(deck_round(r),r.get('loop',0),r.get('act')) or i==r['character'] or i in r.get('defeated_opponents',[]) for i in r['routes'])) and r['round']<RUN_LENGTH:routes(r)
    import boss_preview
    if boss_preview.ensure(r,random,route_choices,boss_curse_block):save(r)
    if r.get('reward_rules')!=5 and r['stage']!='duel':
@@ -236,8 +236,8 @@ def install(g):
   elif rd>=6:choices=[0,1,6,15,17,27]
   elif boss:choices=[0,1,3,4,6,7,11,15,17,27]
   else:choices=list(GAME_DECKS)
-  eligible=eligible_opponents(deck_round(run),run.get('loop',0))
-  choices+=[i for i in eligible if (i in TIER_EXCLUSIVE_OPPONENTS or i in UC_OPPONENTS) and i not in choices]
+  eligible=eligible_opponents(deck_round(run),run.get('loop',0),run.get('act'))
+  choices+=[i for i in eligible if (i in TIER_EXCLUSIVE_OPPONENTS or i in UC_OPPONENTS or i in EDISON_DUELISTS) and i not in choices]
   choices=[i for i in choices if i in eligible]
   defeated=set(run.get('defeated_opponents',[]))|set(avoid)
   choices=[i for i in choices if i not in defeated and i!=run['character']]
@@ -301,11 +301,12 @@ def install(g):
   # archetype relic for an archetype in that pack (pack_archetype_relics).
   pack_relics=[]
   if char.get('one_character_packs'):
-   choices=[p['id'] for p in PACKS if p['id'].startswith('DRAFT-') and pack_archetype_relics(p['id'])]
+   choices=[p['id'] for p in PACKS if p['id'].startswith('DRAFT-') and not p.get('home_act') and pack_archetype_relics(p['id'])]
    one=rng.choice(choices);pack_ids=[one]*4;pack_relics=pack_archetype_relics(one)
-  era_run={'act':1} if act_campaign else None
+  duelist=EDISON_DUELISTS.get(index)
+  era_run={'act':1} if act_campaign or duelist else None
   normal_start=act_campaign and not any(char.get(k) for k in ('copycat','engine_deck','randomized'))
-  if act_campaign:era_run['pack_rotations']=acts.draft_rotations(pack_ids if normal_start else [],rng)
+  if act_campaign:era_run['pack_rotations']=acts.draft_rotations(pack_ids if normal_start else [],rng,duelist)
   core_ids,starter_ids=acts.starter_list(era_run,pack_ids,rng) if normal_start else ([],[])
   if act_campaign:signatures=[cid for cid in signatures if acts.allows(era_run,cid)]
   if normal_start:pack_ids=core_ids
@@ -639,10 +640,11 @@ def install(g):
   p.setdefault('achievement_notices',[]).extend(notices)
   storage.write(storage.ROOT/'profile.json',p)
  def unlock_rule(i):
+  if i in EDISON_DUELISTS:return 'wins',0
   rule=PROGRESSION['unlocks'][str(i)]
   return rule['metric'],rule['target']
  def unlock_text(i):
-  if i in (0,1):return 'Available from the beginning'
+  if i in (0,1) or i in EDISON_DUELISTS:return 'Available from the beginning'
   return PROGRESSION['unlocks'][str(i)]['description']
  def finish_duel(run,result,rng=random):
   if result.get('protocol')!=1 or not run.get('duel') or result.get('id')!=run['duel']['id']:raise ValueError('Duel result does not belong to this run.')
@@ -871,7 +873,7 @@ def install(g):
     items.append(item)
   def usable(pid):
    # Old shops/routes can predate progression; an unlocked early pack is the fallback.
-   if acts.active(run):return pid if pid in acts.rotation(run) else acts.rotation(run)[0]
+   if acts.active(run):return pid if acts.shop_pack_available(run,pid) else acts.rotation(run)[0]
    return 'EN-LOB' if PACK_BY_ID.get(pid,{}).get('draft_only') or not unlocks.available('pack',pid,profile) else pid
   tied_ids=[usable(run.get('shop_reward',shop_rewards.reward_for(run['opponent']))['pack'])]
   if run.get('history_mode')=='tag' and len(tag_rewards)==2:
@@ -887,7 +889,8 @@ def install(g):
   pack_ids=tied_ids+others
   personal=CHARACTERS[run.get('shop_pack_character',run['character'])]['pack']
   # A Tag personal pack that is already a guaranteed pack keeps its random slot.
-  if (not general_stock or ar.has(run,'morphing_jar_2')) and len(pack_ids)>2 and personal in rotation and personal in PACK_BY_ID and not (len(tied_ids)>1 and personal in tied_ids) and not (copies_deck(run) or CHARACTERS[run['character']].get('engine_deck')):pack_ids[2]=personal
+  home_personal=personal==acts.home_pack(run,run['character'])
+  if (home_personal or not general_stock or ar.has(run,'morphing_jar_2')) and len(pack_ids)>2 and (home_personal or personal in rotation) and personal in PACK_BY_ID and not (len(tied_ids)>1 and personal in tied_ids) and not (copies_deck(run) or CHARACTERS[run['character']].get('engine_deck')):pack_ids[2]=personal
   # The slots after the character pack (Booster Shelf, Tag's extra packs) never repeat a pack already on the shelf.
   for n in range(3,len(pack_ids)):
    if pack_ids[n] in pack_ids[:n]:

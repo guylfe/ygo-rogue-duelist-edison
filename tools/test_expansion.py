@@ -7,7 +7,7 @@ base=ROOT/'temp'/('tests-'+uuid.uuid4().hex);base.mkdir();storage.ROOT=base
 g.SAVE=base/'run.json';g.RUNTIME=base/'runtime';g.RUNTIME.mkdir()
 p=storage.profile();p['unlocked']=list(range(len(CHARACTERS)));storage.write(base/'profile.json',p)
 assert len(ARTIFACTS)>=36
-assert len(PLAYABLE_IDS)==36
+assert len(PLAYABLE_IDS)==50
 assert all(c.get('copycat') or c.get('random_packs') or c.get('engine_deck') or c['pack'] in PACK_BY_ID for c in CHARACTERS)
 for i in PLAYABLE_IDS:
  c=CHARACTERS[i]
@@ -16,9 +16,8 @@ for i in PLAYABLE_IDS:
   r=g.new_run(i,random.Random(seed));g.auto_deck(r)
   assert not g.validate(r),(c['name'],seed,g.validate(r))
 for pack in PACKS:
- # The card era was extended to May 29, 2005 in v0.1.61 (docs/CONTENT-EXPANSION-2005.md). Character
- # draft packs and merged collections (e.g. JP-LEC) carry no release date.
- assert (pack.get('date') or '')<='2005-05-29' and (pack.get('date') or pack['id'].startswith(('DRAFT-','CUSTOM-')) or pack['id'] in PACK_ALIASES.values()),pack['id']
+ # Character draft packs and merged collections may have no release date.
+ assert (pack.get('date') or '')<='2010-04-20' and (pack.get('date') or pack['id'].startswith(('DRAFT-','CUSTOM-')) or pack['id'] in PACK_ALIASES.values()),pack['id']
  assert all(cid in g.BY_ID for cid in pack['common']+pack['rare'])
 for opponent in GAME_DECKS:
  for rd in [0,3,7,11]:

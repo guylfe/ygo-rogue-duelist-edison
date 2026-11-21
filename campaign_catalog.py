@@ -14,6 +14,8 @@ def watch_catalog():
   add(i,dict(main=g.opponent_deck(0,rng=random.Random(0),opponent=i,tutorial_variant=variant),extra=[]),'Opening Duel')
  for tier in range(3):
   for i in content.eligible_opponents(tier*3+1):add(i,content.opponent_record(tier*3+1,i),'Tier '+str(tier+1))
+ for i,duelist in content.EDISON_DUELISTS.items():
+  add(i,content.opponent_record(1,i),'Act '+str(duelist['home_act']))
  for i in content.eligible_opponents(0,loop=1):add(i,content.opponent_record(0,i,loop=1),'Endless')
  add(-1,endless.CHAMPION,'World Championship')
  opponents={'-1':dict(name=endless.CHAMPION['name'],sprite='dm01.png',background='character-backgrounds/0.jpg')}
@@ -26,7 +28,7 @@ def card_sources(cid):
  if cid not in g.BY_ID:return dict(packs=[],opponents=[])
  identity=g.card_identity(cid)
  def includes(ids):return any(x in g.BY_ID and g.card_identity(x)==identity for x in ids)
- packs=[dict(id=p['id'],name=p['name']) for p in content.PACKS if includes(p['common']+p['rare']+p.get('starter_support',[]))]
+ packs=[dict(id=p['id'],name=p['name']) for p in content.PACKS if includes(p['common']+p['rare']+p.get('starter_support',[])+sum(p.get('goat_slots',{}).values(),[]))]
  catalog=watch_catalog();opponents=[]
  for i,rows in catalog['cpuWatchDecks'].items():
   name=catalog['cpuWatchOpponents'].get(i,{}).get('name') or content.CHARACTERS[int(i)]['name']

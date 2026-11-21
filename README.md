@@ -6,6 +6,8 @@ The Edison campaign adds dated TCG cards through April 20, 2010, including [Duel
 
 New solo runs have three nine-duel acts. Act 1 uses the [GOAT checklist](https://www.goatformat.com/cardpool.html) through The Lost Millennium. Act 2 runs through Light of Destruction, and Act 3 runs through Duelist Pack: Kaiba. Each act has eight native boosters in its run-specific shop rotation. Between acts, pick three boosters from the incoming rotation and up to two previously offered boosters to carry forward. Edit the provisional minimums and pack counts in [the act configuration](data/campaign-acts.json).
 
+Choose from Duel Monsters, GX, and 5D's. The GX and 5D's duelists start with a GOAT edition of their named draft booster. Their full signature packs and historical supporting boosters arrive in their home acts, where these duelists also appear as CPU opponents.
+
 A single-player roguelike deckbuilder built on Yu-Gi-Oh! duels: pick a duelist, draft from era-accurate booster packs, collect relics and fight through a campaign of CPU opponents.
 
 - **Original webapp:** [itch.io](https://thronior.itch.io/ygo-rogue). It also runs in desktop browsers.

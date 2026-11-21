@@ -19,14 +19,15 @@ export const isSynchro = data => !!(data?.type & SYNCHRO);
 
 function combinations(cards, data, target) {
  // Forecast the straightforward procedures. The core alone offers legal summons and materials.
- const requirement = /^(?:1 Tuner|"([^"]+)") \+ (\d+)(\+| or more)? non-Tuner(?: (Zombie))? monsters?$/i.exec(target.desc?.split('\n')[0]);
+ const requirement = /^(?:1 Tuner|"([^"]+)"|1 "([^"]+)" Tuner) \+ (\d+)(\+| or more)? non-Tuner(?: (Zombie))? monsters?$/i.exec(target.desc?.split('\n')[0]);
  if (!requirement) return [];
- const [, namedTuner, count, more, zombie] = requirement;
+ const [, namedTuner, tunerArchetype, count, more, zombie] = requirement;
  const min = Number(count);
  const type = card => data[card.code]?.type || 0;
  const level = card => card.level || data[card.code]?.level || 0;
  const nonTuners = cards.filter(c => !(type(c) & TUNER) && (!zombie || Number(c.race ?? data[c.code]?.race)===ZOMBIE));
- const tuners = cards.filter(c => (type(c) & TUNER) && (!namedTuner || c.name === namedTuner));
+ const tuners = cards.filter(c => (type(c) & TUNER) && (!namedTuner || c.name === namedTuner) &&
+  (!tunerArchetype || c.name.startsWith(tunerArchetype+' ')));
  const lines = [];
  for (const tuner of tuners) {
   for (let bits = 1; bits < (1 << nonTuners.length); bits++) {

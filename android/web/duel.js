@@ -449,6 +449,16 @@ for(const side of s.players)for(const c of [...side.monsters,...side.spells])if(
     return false;
    });
    if(helpful)return idle(I.SELECT_ACTIVATE,helpful.index);
+   const hand=this.query(p,L.HAND).filter(Boolean);
+   const necromancer=own.some(c=>visible(c)&&this.name(c.code)==='Infernity Necromancer');
+   if(necromancer&&hand.length===1&&this.query(p,L.GRAVE).some(c=>c&&this.name(c.code).startsWith('Infernity ')&&this.name(c.code)!=='Infernity Necromancer')){
+    const setLast=m.spell_sets.findIndex(c=>c.code===hand[0].code);
+    if(setLast>=0)return idle(I.SELECT_SPELL_SET,setLast);
+   }
+   const junk=m.summons.findIndex(c=>this.name(c.code)==='Junk Synchron');
+   if(junk>=0&&own.length<4&&smart.effectsEnabled(p)&&!this.destroyedOnNormalSummon(m.summons[junk])&&
+      this.query(p,L.EXTRA).some(c=>c&&this.name(c.code)==='Junk Warrior')&&
+      this.query(p,L.GRAVE).some(c=>c&&(stat(c).type&1)&&!(stat(c).type&0x1000)&&stat(c).level===2))return idle(I.SELECT_SUMMON,junk);
    const ranked=list=>list.map((c,i)=>({c,i})).sort((a,b)=>atk(b.c)-atk(a.c));
    const firstMove=own.length===0&&enemy.length===0&&this.query(p,L.GRAVE).filter(Boolean).length===0;
    if(smart.battleBeforeSummon())return idle(I.TO_BP);
@@ -543,6 +553,12 @@ for(const side of s.players)for(const c of [...side.monsters,...side.spells])if(
   if(m.type===M.SELECT_CARD&&this.effect?.code===PLAGUESPREADER&&m.selects.length&&m.selects.every(c=>c.controller===p&&c.location===L.HAND)){
    const costs=m.selects.map((c,i)=>({i,value:smart.handLoss(c)})).sort((a,b)=>a.value-b.value);
    return {type:R.SELECT_CARD,indicies:[costs[0].i]};
+  }
+  if(m.type===M.SELECT_CARD&&this.name(this.effect?.code)==='Arcana Force XXI - The World'&&
+     this.phase===512&&m.min===2&&m.selects.every(c=>c.controller===p&&c.location===L.MZONE)){
+   const costs=m.selects.map((c,i)=>({c,i})).filter(({c})=>this.name(c.code)!=='Arcana Force XXI - The World');
+   costs.sort((a,b)=>smart.expendable(live(a.c)||a.c)-smart.expendable(live(b.c)||b.c));
+   if(costs.length>=2)return {type:R.SELECT_CARD,indicies:costs.slice(0,2).map(({i})=>i)};
   }
   if(m.type===M.SELECT_SUM){
    // Keep engine legality checks, but try expendable materials before valuable bodies.

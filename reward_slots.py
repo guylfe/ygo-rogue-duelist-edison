@@ -89,7 +89,7 @@ def prepare_decks(run, count, rng=random):
     from content import eligible_opponents, opponent_record, CHARACTERS
     round_index=run['round'];loop=run.get('loop',0)
     source=[]
-    for opponent in eligible_opponents(round_index,loop):
+    for opponent in eligible_opponents(round_index,loop,run.get('act')):
         if run.get('act'):
             import campaign
             future=dict(run,round=round_index)
@@ -108,7 +108,7 @@ def prepare_decks(run, count, rng=random):
 
 def validate_deck_offer(run, slot):
     offer=run.get('reward_slots') or {}
-    if not offer.get('pending') or run.get('stage') not in ('shop','complete') or offer.get('duel')!=(run.get('duel') or {}).get('id'):
+    if not offer.get('pending') or run.get('stage') not in ('shop','complete','act_transition') or offer.get('duel')!=(run.get('duel') or {}).get('id'):
         raise ValueError('These deck choices are no longer available.')
     if type(slot) is not int or not 0<=slot<len(offer.get('choices',[])):
         raise ValueError('Choose one of the offered decks.')

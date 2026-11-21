@@ -7,7 +7,7 @@ import campaign as g,storage,shop_rewards
 from content import *
 base=ROOT/'temp'/('revision-'+uuid.uuid4().hex);base.mkdir();storage.ROOT=base;g.SAVE=base/'run.json';g.RUNTIME=base/'runtime';g.RUNTIME.mkdir()
 p=storage.profile();p['unlocked']=PLAYABLE_IDS;storage.write(base/'profile.json',p)
-assert len(PLAYABLE_IDS)==36 and not set([25,26,27])&set(PLAYABLE_IDS)
+assert len(PLAYABLE_IDS)==50 and not set([25,26,27])&set(PLAYABLE_IDS)
 # Mokuba's start moved from the four Tournament Packs (now one merged EN-TP4 alias) to his own draft
 # pack plus shared core sets (data/character-drafts.json, reworked in v0.2.2).
 r=g.new_run(24,random.Random(1));assert r['pack_ids']==starting_packs(24)==['DRAFT-MOKUBA-KAIBA','DRAFT-MOKUBA-KAIBA','EN-LOB','EN-LOD']
@@ -40,4 +40,4 @@ assert len(recovered['pool'])==len(r['pool']) and Counter(g.card_identity(c) for
 storage.write(base/'profile.json',dict(storage.profile(),unlocked=[0,1],wins=0,won_as=[],victories=0,max_gold=0,max_bought=0,max_artifacts=0))
 # data/character-progression.json: character 24 unlocks at 300 coins held, character 2 by winning as Yami Yugi.
 r=g.new_run(0);r['gold']=300;g.update_profile(r);assert 24 in r['unlocks_earned'] and 2 not in r['unlocks_earned'];r['stage']='complete';g.update_profile(r);assert {2,24}<=set(r['unlocks_earned'])
-print('PASS: varied rewards and tied packs, 36-character roster, Mokuba draft start, capped boss healing, both deck shuffles, legacy copy repair, run unlocks/stats')
+print('PASS: varied rewards and tied packs, 50-character roster, Mokuba draft start, capped boss healing, both deck shuffles, legacy copy repair, run unlocks/stats')

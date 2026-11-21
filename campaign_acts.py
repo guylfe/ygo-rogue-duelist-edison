@@ -31,7 +31,7 @@ def pack_act(pid):
     from content import PACK_BY_ID
     pack = PACK_BY_ID[pid]
     if pid.startswith('DRAFT-'):
-        return 1
+        return pack.get('home_act', 1)
     if pack.get('region') != 'EN' or not pid.startswith('EN-'):
         return None
     return next((i for i, act in enumerate(ACTS, 1) if pack['date'] <= act['cutoff']), None)
@@ -41,6 +41,10 @@ def edition(run, pack):
     """Project every slot and rarity of a pack into the current act."""
     if not active(run):
         return pack
+    if pack.get('goat_slots') and era(run) < pack['home_act']:
+        slots = pack['goat_slots']
+        rarities = {str(cid): [label] for key, label in (('common','Common'),('rare','Rare')) for cid in slots[key]}
+        pack = dict(pack, **slots, rare_display=slots['rare'], rarities=rarities)
     from campaign import card_identity, normal_starter
     card_fields = ('common', 'rare', 'starter_support', 'rare_display')
     result = dict(pack, **{k: [cid for cid in pack[k] if allows(run, cid)] for k in card_fields if k in pack})
@@ -66,7 +70,7 @@ def native_packs(act, starters=False):
             and (not starters or not edition({'act': act}, p).get('shop_only'))]
 
 
-def draft_rotations(preferred, rng):
+def draft_rotations(preferred, rng, duelist=None):
     """Draw the three native shop lineups once, before any campaign offers."""
     rotations = {}
     starters = dict.fromkeys(preferred[:3])
@@ -79,6 +83,8 @@ def draft_rotations(preferred, rng):
         companions = [pid for pid in rules['companion_packs'] if pid in native and pid not in lineup]
         if companions:
             lineup.append(rng.choice(companions))
+        if duelist and duelist['home_act'] == act and duelist['support'] in native and duelist['support'] not in lineup:
+            lineup.append(duelist['support'])
         if act == 1:
             lineup.extend(pid for pid in starters if pid in native and pid not in lineup)
         limit = CONFIG['rotation_size']
@@ -99,11 +105,25 @@ def native_rotation(run, act):
 def rotation(run, draft_relic=False):
     from content import PACKS
     if not active(run):
-        return [p['id'] for p in PACKS]
+        return [p['id'] for p in PACKS if not p.get('home_act')]
     act = era(run)
     # Draft packs are available through their signature start or the dedicated relic.
-    themed = [p['id'] for p in PACKS if p.get('draft_only') and openable(p['id'], act)] if draft_relic else []
+    themed = [p['id'] for p in PACKS if p.get('draft_only') and p.get('home_act',act)==act and openable(p['id'], act)] if draft_relic else []
     return list(dict.fromkeys(native_rotation(run, act) + run.get('carried_packs', []) + themed))
+
+
+def home_pack(run, character):
+    from content import EDISON_DUELISTS
+    duelist = EDISON_DUELISTS.get(character)
+    if active(run) and not run.get('loop') and duelist and duelist['home_act'] == era(run):
+        return duelist['pack']
+    return None
+
+
+def shop_pack_available(run, pid):
+    from content import PACK_BY_ID
+    pack = PACK_BY_ID.get(pid, {})
+    return pid in rotation(run) or (pack.get('home_act') == era(run) and not run.get('loop'))
 
 
 def register_pack(run, pid):
@@ -116,6 +136,7 @@ def pin_options(run):
     if not active(run):
         return []
     eligible = set(rotation(run))
+    eligible.update(pid for pid in run.get('opened_packs', []) if shop_pack_available(run, pid))
     if era(run) == 1:
         eligible.update(run.get('pack_ids', []))
     return [pid for pid in run.get('opened_packs', []) if pid in eligible and pid in PACK_BY_ID]
@@ -183,15 +204,20 @@ def choose_starter(run, pid):
 
 
 def transition_offer(run, rng):
+    from content import PACK_BY_ID, EDISON_DUELISTS
     incoming = era(run) + 1
     packs = native_rotation(run, incoming)
     # Rotate the preview once at the boundary. Persist it so returning to the
     # run never rerolls the choices or awards cards twice.
     offered = list(dict.fromkeys(run.get('offered_packs', []) + (run.get('pack_ids', []) if era(run) == 1 else [])))
-    from content import PACK_BY_ID
     carryable = [pid for pid in offered if pid in PACK_BY_ID and openable(pid, incoming)]
     anchor = ACTS[incoming - 1]['featured_pack']
     choices = [anchor] if anchor in packs else []
+    duelist = EDISON_DUELISTS.get(run.get('character'))
+    if duelist and duelist['home_act']==incoming:
+        if duelist['support'] in packs and duelist['support'] not in choices:
+            choices.append(duelist['support'])
+        choices.append(duelist['pack'])
     eligible = [pid for pid in packs if pid not in choices]
     choices += rng.sample(eligible, min(len(eligible), CONFIG['transition_choices'] - len(choices)))
     return dict(incoming=incoming, choices=choices, carryable=carryable,
@@ -214,7 +240,7 @@ def transition(game, run, value, rng):
     for key in ('act_transition', 'next_boss', 'tutorial_variants', 'cursed_offer', 'free_packs', 'duel', 'mobile_duel',
                 'reward_target', 'reward_targets'):
         nxt.pop(key, None)
-    if nxt.get('pinned_pack') not in rotation(nxt):
+    if not shop_pack_available(nxt,nxt.get('pinned_pack')):
         nxt['pinned_pack'] = None
     nxt['new_cards_from'] = len(nxt['pool'])
     opened = [dict(id=pid, cards=game.open_pack(pid, rng, nxt)) for pid in incoming]
@@ -236,6 +262,11 @@ def transition(game, run, value, rng):
 def preview(game, run, opponent):
     record = game.run_opponent_record(run, opponent)
     main, extra = record['main'], record['extra']
+    from content import EDISON_DUELISTS
+    duelist = EDISON_DUELISTS.get(opponent)
+    if duelist:
+        examples = [game.BY_NAME[name]['id'] for name in [duelist['ace'],*duelist['enablers']]]
+        return [cid for cid in examples if cid in main or cid in extra]
     interesting = sorted(dict.fromkeys(extra + main), key=lambda cid: (
         -(FIRST_ACT.get(cid, 0) == era(run)),
         -(cid in extra or bool(game.BY_ID[cid]['data']['type'] & 0x1000)),

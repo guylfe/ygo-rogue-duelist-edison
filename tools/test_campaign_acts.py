@@ -52,7 +52,8 @@ def verify_stock(run):
     allowed = set(acts.rotation(run,approved_relics.has(run,'duelist_catalogue')))
     for item in run['shop']:
         if item['kind']=='pack' and item['id']!='RANDOM-PACK':
-            assert item['id'] in allowed or item['id']==run.get('pinned_pack'),item
+            assert item['id'] in allowed or item['id']==run.get('pinned_pack') or (
+                item['opponent_pack'] and acts.shop_pack_available(run,item['id'])),item
         if item['kind']=='single':
             ids=item.get('bundle',[item['id']])
             assert all(acts.allows(run,c) for c in ids if c in game.BY_ID and not c>=190_000_000),item

@@ -241,7 +241,7 @@ export function smartContext(e,p,L,prompt=null){
  const hasAttribute=(c,value)=>attributeSet(c).has(String(value).toUpperCase());
  const attr=c=>attributeSet(c).values().next().value||e.cards.get(c.code)?.attribute;
  const fusionSubstitutes=new Set(['Beastking of the Swamps','King of the Swamp','Goddess with the Third Eye','Mystical Sheep #1','Versago the Destroyer','The Dark - Hex-Sealed Fusion']);
- const fusionReady=()=>q(p,L.EXTRA).some(c=>{const text=e.cards.get(c.code)?.desc||'',materials=[...text.split('\n')[0].matchAll(/"([^"]+)"/g)].map(m=>m[1]),available=allOwn.slice();let usedSubstitute=false;const ready=materials.length>1&&materials.every(n=>{let i=available.findIndex(x=>name(x)===n);if(i<0&&!usedSubstitute){i=available.findIndex(x=>fusionSubstitutes.has(name(x)));if(i>=0)usedSubstitute=true;}if(i<0)return false;available.splice(i,1);return true});return ready&&(atk(c)>threat||name(c)==='Reaper on the Nightmare'&&enemy.length>0&&effectsEnabled(p))});
+ const fusionReady=(accept=()=>true,substitutes=true)=>q(p,L.EXTRA).some(c=>{if(!accept(c))return false;const text=e.cards.get(c.code)?.desc||'',materials=[...text.split('\n')[0].matchAll(/"([^"]+)"/g)].map(m=>m[1]),available=allOwn.slice();let usedSubstitute=false;const ready=materials.length>1&&materials.every(n=>{let i=available.findIndex(x=>name(x)===n);if(i<0&&substitutes&&!usedSubstitute){i=available.findIndex(x=>fusionSubstitutes.has(name(x)));if(i>=0)usedSubstitute=true;}if(i<0)return false;available.splice(i,1);return true});return ready&&(atk(c)>threat||effectsEnabled(p)&&(name(c)==='Reaper on the Nightmare'&&enemy.length>0||name(c)==='Ojama King'&&enemy.length<=2&&own.every(m=>atk(m)<1300)))});
  const matchesRitual=(spell,monster)=>ritualMatches(e.cards.get(spell.code),e.cards.get(monster.code));
  const ritualMaterialReady=(spell,monster)=>{const advanced=name(spell)==='Advanced Ritual Art',source=advanced?q(p,L.DECK):allOwn;
   const levels=source.filter(x=>!same(x,monster)&&data(x).type&1&&(!advanced||data(x).type&16)&&!(x.location===L.MZONE&&name(x)==='Relinquished')).map(x=>x.level??e.cards.get(x.code)?.level??0);
@@ -1737,6 +1737,14 @@ export function smartContext(e,p,L,prompt=null){
    if(!(own.length<5&&elig.some(x=>atk(x)>threat)&&(n!=='Premature Burial'||e.lp[p]>1800)))return -1;if(best>=1800)return 90;const need=m=>effectiveLevel(m,true)>6?2:effectiveLevel(m,true)>4?1:0;return hand.some(m=>!same(m,c)&&(data(m).type&1)&&need(m)>own.length)?90:-1;
   }
   if(n==='Polymerization')return fusionReady()?95:-1;
+  if(n==='Power Bond')return fusionReady(fusion=>race(fusion)==='Machine'&&atk(fusion)<e.lp[p],false)?97:-1;
+  if(n==='Light Barrier')return [...own,...hand].some(card=>name(card).startsWith('Arcana Force '))?94:-1;
+  if(n==='Arcana Force XXI - The World'&&e.phase===512){
+   const costs=own.filter(card=>name(card)!==n).map(card=>atk(card)).sort((a,b)=>a-b);
+   return costs.length>=2&&costs[0]+costs[1]<=2200?88:-1;
+  }
+  if(n==='Destiny HERO - Diamond Dude')return q(p,L.DECK).length>1?82:-1;
+  if(n==='Junk Synchron'||n==='Infernity Necromancer')return 86;
   if(n==='Fusion Sage')return !has(hand,'Polymerization')&&has(q(p,L.DECK),'Polymerization')?95:-1;
   if(n==='Black Illusion Ritual'&&(!enemy.length||back.filter(x=>x.sequence<5).length>=(e.aiModifiers?.spellTrapZones??5)||!effectsEnabled(p)))return -1;
   if(n==='Black Illusion Ritual')return ritualGate(c,'Relinquished',threat>=1800||enemy.some(x=>face(x)&&atk(x)>=2000)?97:95);

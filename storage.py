@@ -35,6 +35,8 @@ def profile():
  p=read(ROOT/'profile.json',{})
  if not isinstance(p,dict): p={}
  for k,v in {'unlocked':[0,1],'wins':0,'runs':0,'victories':0,'won_as':[],'max_gold':0,'max_bought':0,'max_artifacts':0,'decks_bought':0}.items():p.setdefault(k,v)
+ from content import EDISON_DUELISTS
+ p['unlocked']=sorted(set(p['unlocked'])|EDISON_DUELISTS.keys())
  import challenge_levels
  challenge_levels.sync_engine_unlock(p)
  if 'achievement_notices' in p:p['achievement_notices']=[n for n in p['achievement_notices'] if not str(n.get('id','')).startswith(('card:','pack:'))]

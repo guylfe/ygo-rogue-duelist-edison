@@ -13,7 +13,8 @@ def generate():
   c=dict(content.CHARACTERS[i],id=i,signatures=ids(content.CHARACTERS[i]['cards']))
   if c.get('alternate'):c['alternate']=dict(c['alternate'],signatures=ids(c['alternate'].get('cards',[])))
   return c
- draft={'characters':[character(i) for i in content.PLAYABLE_IDS], 'packs':content.PACKS,'weights':{str(c['id']):card_rarity.weight(c['id']) for c in campaign.CARDS if card_rarity.weight(c['id'])!=1}}
+ # The new signature packs have different odds by solo campaign act.
+ draft={'characters':[character(i) for i in content.PLAYABLE_IDS if i not in content.EDISON_DUELISTS], 'packs':[p for p in content.PACKS if not p.get('home_act')],'weights':{str(c['id']):card_rarity.weight(c['id']) for c in campaign.CARDS if card_rarity.weight(c['id'])!=1}}
  (ROOT/'multiplayer/cloudflare/draft-catalog.json').write_text(json.dumps(draft,separators=(',',':')),encoding='utf-8')
  generate_draft_relics()
  cards=[{'id':c['id'],'name':c['name'],'type':c['type'],'data':{'type':c['data']['type'],'alias':c['data'].get('alias',0)}} for c in campaign.CARDS]

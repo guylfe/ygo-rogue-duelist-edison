@@ -56,6 +56,24 @@ def _fill_millennium_puzzles():
   pack['rare_display']=list(pack['rare'])
   pack['rarities']={str(cid):rarities[cid] or ['Rare' if cid in rare else 'Common'] for cid in pool}
 _fill_millennium_puzzles()
+
+EDISON_DUELISTS = {row['id']: row for row in json.loads((DATA/'edison-duelists.json').read_text(encoding='utf8'))}
+_names = {card['name']: card['id'] for card in era_cards()}
+EDISON_DECKS = {}
+for _id, _duelist in EDISON_DUELISTS.items():
+ _pack_id = 'DRAFT-'+_duelist['slug'].upper()
+ _duelist['pack'] = _pack_id
+ _common, _rare = ([_names[name] for name in _duelist[key]] for key in ('common','rare'))
+ _starter = {key: [_names[name] for name in _duelist['goat_'+key]] for key in ('common','rare')}
+ _enablers = [_names[name] for name in _duelist['enablers']]
+ _pack = dict(id=_pack_id,name=_duelist['name'],region='EN',image=_pack_id+'.jpg',draft_only=True,
+              home_act=_duelist['home_act'],archetypes=_duelist['tags'],size=9,common=_common,rare=_rare,
+              rare_display=_rare,rarities={str(cid):['Rare' if cid in _rare else 'Common'] for cid in _common+_rare},
+              goat_slots=_starter,rarity_weights={str(cid):3.0 for cid in _enablers} | {str(_names[_duelist['ace']]):4.0})
+ PACKS.append(_pack)
+ PACK_BY_ID[_pack_id] = _pack
+ EDISON_DECKS[_id] = dict(main=[_names[name] for name,count in _duelist['main'].items() for _ in range(count)],
+                           extra=[_names[name] for name in _duelist['extra']],side=[],name=_duelist['name'])
 def normalize_pack_references(value):
  if isinstance(value,dict):
   for key,item in value.items():value[key]=normalize_pack_references(item)
@@ -238,7 +256,7 @@ def starting_packs(index,rng=None):
   import random
   rng=rng or random
   # Bakura can draw any pack, including character and shop boosters.
-  return [p['id'] for p in rng.sample([p for p in PACKS if not p.get('shop_chance')],4)]
+  return [p['id'] for p in rng.sample([p for p in PACKS if not p.get('shop_chance') and not p.get('home_act')],4)]
  return CHARACTERS[index].get('starting_packs',DRAFTS.get(str(index),[CHARACTERS[index]['pack']]*4))
 def randomized_run(run):
  """Copycat's second loadout, Randomizer (user, 2026-11-15): it builds a deck from randomized cards (random_cards.py)
@@ -254,6 +272,8 @@ def fixed_deck(run):
 OPPONENT_TIERS=FIXED_OPPONENTS
 def opponent_record(round_index,index,loop=0):
  from deck_files import read
+ if index in EDISON_DECKS:
+  return dict(EDISON_DECKS[index],tier=min(3,round_index//3+1))
  if index in UC_OPPONENTS:
   if not loop:raise ValueError('UC opponents require a later loop.')
   return dict(UC_OPPONENTS[index]['deck'],tier=4)
@@ -369,14 +389,16 @@ def deck_round(run):
  if run['round']==0 and not run.get('loop') and run.get('history_mode')!='tag' and (copies_deck(run) or run.get('act',1)>1):return 1
  return run['round']
 
-def eligible_opponents(round_index,loop=0):
+def eligible_opponents(round_index,loop=0,act=None):
  if round_index==0 and not loop:return list(TUTORIAL_OPPONENTS)
  tier=min(3,round_index//3+1)
  if loop:
   tier4=json.loads((Path(__file__).parent/'data/tier4-decks.json').read_text(encoding='utf8'))
   tier4_only=[i for i,row in TIER_EXCLUSIVE_OPPONENTS.items() if row.get('tier')==4 and str(i) in tier4]
   return [i for i in GAME_DECKS if str(i) in tier4]+list(UC_OPPONENTS)+tier4_only
- return list(GAME_DECKS)+([] if loop else [i for i,row in TIER_EXCLUSIVE_OPPONENTS.items() if str(tier) in row.get('tier_decks',{str(row['tier']):row['deck']})])
+ return (list(GAME_DECKS)
+         + [i for i,row in TIER_EXCLUSIVE_OPPONENTS.items() if str(tier) in row.get('tier_decks',{str(row['tier']):row['deck']})]
+         + [i for i,row in EDISON_DUELISTS.items() if row['home_act']==act])
 
 # Each defeated Collector is a separate, permanent NPC identity, not its avatar.
 UC_OPPONENTS={row['opponent_id']:row for row in json.loads((Path(__file__).parent/'data/fallen-collectors.json').read_text(encoding='utf8'))['opponents']}
@@ -390,5 +412,16 @@ for _id in sorted(set(TIER_EXCLUSIVE_OPPONENTS)|set(UC_OPPONENTS)):
  else:
   _row=UC_OPPONENTS[_id];_avatar=CHARACTERS[_row['character']]
   CHARACTERS.append(dict(_avatar,name=_row['name'],opponent_only=True,ultimate_collector=True,avatar_character=_row['character']))
+
+for _id, _duelist in EDISON_DUELISTS.items():
+ if _id!=len(CHARACTERS):raise ValueError('Playable character identities must remain append-only.')
+ _pid=_duelist['pack']
+ CHARACTERS.append(dict(name=_duelist['name'],pack=_pid,starting_packs=[_pid]*4,series=_duelist['series'],
+                        sprite='duelist-'+_duelist['slug']+'.png',background='character-select-background.png',
+                        race=_duelist['race'],attribute=_duelist['attribute'],cards=_duelist['goat_common'][:2],
+                        ace=_duelist['ace'],home_act=_duelist['home_act'],support=_duelist['support'],
+                        archetypes=_duelist['tags'],theme=' · '.join(_duelist['tags']),type=2,bonus='',
+                        color='#e5c58a',starting_relic='none'))
+ PLAYABLE_IDS.append(_id)
 
 normalize_pack_references(CHARACTERS)
