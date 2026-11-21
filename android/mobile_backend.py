@@ -159,7 +159,7 @@ def dispatch(raw):
   else:marks.pop(key,None)
   run['card_marks']=marks
  elif action=='toggle':
-  if content.copies_deck(run):raise ValueError('Copycat uses the borrowed deck plus one Copycat.')
+  if content.copies_deck(run):raise ValueError('Copycat’s borrowed deck is read-only.')
   if content.fixed_deck(run):raise ValueError('The Dueling Engine uses a fixed deck chosen after victories.')
   # One index, or a list in order: quick deck-editor taps made while one was saving (mobile.js runDeckTaps, 2026-11-20).
   # A list is applied to a copy, so a refused add leaves the deck as it was.

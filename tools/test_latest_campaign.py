@@ -22,11 +22,14 @@ weak=g.opponent_deck(0);monsters=[g.BY_ID[c] for c in weak if g.BY_ID[c]['data']
 assert max(c['atk'] for c in monsters)>max(c['defense'] for c in monsters)
 signature=g.BY_NAME['Copycat']['id']
 for rd in [0,1,3,6]:
- r=g.new_run(37);r['round']=rd;g.routes(r);g.copy_deck(r)
+ rng=random.Random(4)
+ r=g.new_run(37,rng);r['round']=rd;g.routes(r,rng);g.copy_deck(r,rng)
  # Copycat's first duel copies a Tier 1 deck, not a tutorial deck (deck_round).
  assert deck_round(r)==(rd or 1) and 'tutorial_variants' not in r
- expected=Counter(g.opponent_deck(deck_round(r),opponent=r['opponent']));expected[signature]+=1
- assert Counter(cid for cid in g.deck(r) if not g.is_extra(cid))==expected
+ borrowed=g.opponent_deck(deck_round(r),rng,opponent=r['opponent'])
+ # Alternate printings and cards treated as the same name share the existing three-copy limit.
+ expected=Counter(g.limit_identity(cid) for cid in borrowed+[signature])
+ assert Counter(g.limit_identity(cid) for cid in g.deck(r) if not g.is_extra(cid))=={name:min(3,n) for name,n in expected.items()}
  assert r['guaranteed']==[signature] and g.validate(r) is None
  r['stage']='shop';r['gold']=999;g.restock(r);single=next(i for i,x in enumerate(r['shop']) if x['kind']=='single')
  try:g.buy(r,single);raise AssertionError('Copycat bought a card')

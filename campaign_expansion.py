@@ -400,10 +400,15 @@ def install(g):
   if acts.active(run) and not run.get('encore_active'):
    record=run_opponent_record(run);main=record['main'][:];extra=record['extra'][:]
   signature=g.BY_NAME['Copycat']['id']
-  if main.count(signature)>=3:main.remove(signature)
-  main.append(signature)
+  bonus=[signature] if acts.allows(run,signature) else []
+  if bonus:
+   if main.count(signature)>=3:main.remove(signature)
+   if acts.active(run) and not run.get('encore_active') and len(main)>=60:
+    main,extra=g.legal_fixed_cards(main,extra)
+    if len(main)==60:main.pop()
+   main.extend(bonus)
   if not run.get('encore_active'):main,extra=g.legal_fixed_cards(main,extra)
-  run['pool']=main+extra+run.get('act_pack_cards',[]);run['selected']=list(range(len(main)+len(extra)));run['guaranteed']=[signature];run['copied_opponent']=run['opponent']
+  run['pool']=main+extra+run.get('act_pack_cards',[]);run['selected']=list(range(len(main)+len(extra)));run['guaranteed']=bonus;run['copied_opponent']=run['opponent']
  def engine_deck(run,rng=random):
    if not CHARACTERS[run['character']].get('engine_deck'):return
    if run.get('engine_reward_selected'):return

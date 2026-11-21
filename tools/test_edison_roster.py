@@ -1,9 +1,11 @@
 """Check append-only roster data and the actual campaign acquisition flow."""
+from collections import Counter, defaultdict
 from copy import deepcopy
 import hashlib
 import json
 from pathlib import Path
 import random
+import re
 import sys
 import tempfile
 from unittest.mock import patch
@@ -24,6 +26,15 @@ def digest(value):
 
 def dispatch(action, value=None):
     return json.loads(mobile_backend.dispatch(json.dumps(dict(action=action, value=value))))
+
+
+def prepare(run, rng):
+    game.prepare_duel(run, rng)
+    lua = (game.RUNTIME/'puzzles'/'shadow-run.lua').read_text(encoding='utf8')
+    decks = defaultdict(list)
+    for cid, player, location in re.findall(r'Debug.AddCard\((\d+),(\d),\d,LOCATION_(DECK|EXTRA),', lua):
+        decks[int(player), location].append(int(cid))
+    return decks
 
 
 assert digest(content.CHARACTERS[:98]) == 'e6007bd9bd06cc40d1433baf794c38d21b2cb6ba7dc8d98f802d4e99928e3ab4'
@@ -53,8 +64,53 @@ with tempfile.TemporaryDirectory() as tmp, patch.object(storage,'ROOT',Path(tmp)
     game.RUNTIME.mkdir()
     p=storage.profile()
     p['relicless_unlocked']=True
+    p['unlocked']=content.PLAYABLE_IDS[:]
     storage.write(storage.ROOT/'profile.json',p)
     assert set(content.EDISON_DUELISTS)<=set(storage.profile()['unlocked'])
+    for i in content.PLAYABLE_IDS:
+        rng=random.Random(28000+i)
+        run=game.new_run(i,rng,act_campaign=True)
+        if run['stage']=='starter':acts.choose_starter(run,next(iter(run['starter_offer'])))
+        game.auto_deck(run)
+        decks=prepare(run,rng)
+        assert all(acts.allows(run,cid) for cards in decks.values() for cid in cards), i
+        assert 20<=len(decks[0,'DECK'])<=60 and len(decks[0,'EXTRA'])<=15, i
+        assert len(decks[1,'DECK'])>=20, i
+    print('PASS both sides of all 50 default opening duels contain only GOAT-eligible cards')
+
+    signature=game.BY_NAME['Copycat']['id']
+    assert acts.FIRST_ACT[signature]==2
+    rng=random.Random(28037)
+    run=game.new_run(37,rng,act_campaign=True)
+    # Resume a pre-fix Act 1 save with the bonus still in the borrowed pool.
+    run['selected'].append(len(run['pool']))
+    run['pool'].append(signature)
+    run['guaranteed']=[signature]
+    run['_save_slot']=2
+    game.save(run)
+    run=game.load_run(2)
+    for act in (1,2,3):
+        assert run['act']==act and content.copies_deck(run)
+        bonus=[signature] if act>=2 else []
+        if act>1:assert run['guaranteed']==bonus and signature in game.deck(run)
+        record=game.run_opponent_record(run)
+        expected_main=record['main'][:]
+        if bonus and expected_main.count(signature)>=3:expected_main.remove(signature)
+        expected_main,expected_extra=game.legal_fixed_cards(expected_main+bonus,record['extra'])
+        decks=prepare(run,rng)
+        assert run['guaranteed']==bonus and Counter(decks[0,'DECK'])==Counter(expected_main)
+        assert Counter(decks[0,'EXTRA'])==Counter(expected_extra)
+        assert all(acts.allows(run,cid) for cards in decks.values() for cid in cards)
+        assert 20<=len(decks[0,'DECK'])<=60
+        if act<3:
+            run.update(stage='act_transition',round=9,act_transition=acts.transition_offer(run,rng))
+            option=run['act_transition']['choices'][0]
+            acts.transition(game,run,{'packs':[option]*3,'carry':[]},rng)
+            assert len(run['act_pack_cards'])==27*act
+    legacy=game.new_run(37,rng)
+    assert signature in prepare(legacy,rng)[0,'DECK'] and legacy['guaranteed']==[signature]
+    print('PASS Copycat borrowed deck IDs and sizes in all three acts, old save resume, and legacy bonus')
+
     for i, duelist in content.EDISON_DUELISTS.items():
         rng = random.Random(i)
         home, pid = duelist['home_act'], duelist['pack']

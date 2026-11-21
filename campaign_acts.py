@@ -244,7 +244,7 @@ def transition(game, run, value, rng):
         nxt['pinned_pack'] = None
     nxt['new_cards_from'] = len(nxt['pool'])
     opened = [dict(id=pid, cards=game.open_pack(pid, rng, nxt)) for pid in incoming]
-    from content import fixed_deck
+    from content import copies_deck, fixed_deck
     for pack in opened:
         nxt['pool'].extend(pack['cards'])
         if fixed_deck(nxt):
@@ -252,6 +252,8 @@ def transition(game, run, value, rng):
         register_pack(nxt, pack['id'])
     nxt['free_packs'] = opened
     game.routes(nxt, rng)
+    if copies_deck(nxt):
+        game.copy_deck(nxt, rng)
     nxt['shop_reward'] = nxt['route_rewards'][str(nxt['opponent'])]
     nxt['bias'] = nxt['shop_reward']['key']
     game.restock(nxt, rng, general_stock=True)
