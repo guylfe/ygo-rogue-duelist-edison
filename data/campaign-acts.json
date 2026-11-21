@@ -9,6 +9,8 @@
     {
       "name": "GOAT",
       "cutoff": "2005-07-27",
+      "featured_pack": "EN-TLM",
+      "companion_packs": ["EN-PSV", "EN-LOD", "EN-IOC"],
       "minimum": 20,
       "final_stretch_minimum": 25,
       "duels": 9
@@ -16,6 +18,8 @@
     {
       "name": "GX",
       "cutoff": "2008-05-13",
+      "featured_pack": "EN-LODT",
+      "companion_packs": ["EN-GLAS", "EN-PTDN", "EN-EOJ"],
       "minimum": 30,
       "final_stretch_minimum": 35,
       "duels": 9
@@ -23,11 +27,14 @@
     {
       "name": "Edison",
       "cutoff": "2010-04-20",
+      "featured_pack": "EN-TDGS",
+      "companion_packs": ["EN-CSOC", "EN-DP08", "EN-DP09"],
       "minimum": 40,
       "final_stretch_minimum": 40,
       "duels": 9
     }
   ],
+  "rotation_size": 8,
   "carry_limit": 2,
   "transition_picks": 3,
   "transition_choices": 6,

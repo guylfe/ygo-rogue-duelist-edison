@@ -305,6 +305,7 @@ def install(g):
    one=rng.choice(choices);pack_ids=[one]*4;pack_relics=pack_archetype_relics(one)
   era_run={'act':1} if act_campaign else None
   normal_start=act_campaign and not any(char.get(k) for k in ('copycat','engine_deck','randomized'))
+  if act_campaign:era_run['pack_rotations']=acts.draft_rotations(pack_ids if normal_start else [],rng)
   core_ids,starter_ids=acts.starter_list(era_run,pack_ids,rng) if normal_start else ([],[])
   if act_campaign:signatures=[cid for cid in signatures if acts.allows(era_run,cid)]
   if normal_start:pack_ids=core_ids
@@ -324,7 +325,7 @@ def install(g):
    packs=[]
   r=dict(version=3,shop_rerolls=0,character=index,lp=8000,gold=40,round=0,stage='draft',pool=signatures+sum(packs,[]),selected=list(range(len(signatures))),guaranteed=signatures,packs=packs,artifacts=[],history=[],shop=[],duel=None,curses=[],boss_cursed=[],boss_rules=3,boss_curse=None,purchased=0)
   if act_campaign:
-   r.update(act=1,carried_packs=[],opened_packs=[],offered_packs=[])
+   r.update(era_run,carried_packs=[],opened_packs=[],offered_packs=[])
    if normal_start:r.update(stage='starter',starter_offer=starter_offer)
   r['new_cards_from']=0
   r.update(variant=variant,variant_name=char.get('alternate',{}).get('name') if variant else 'Standard',campaign_rules=4,started_at=time.time(),unlocks_earned=[],stats={},pack_ids=pack_ids)

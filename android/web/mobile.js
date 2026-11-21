@@ -969,7 +969,7 @@ function renderActTransition(){
  const incoming=content.campaignActs[offer.incoming-1];
  const picks=actPicks.map((id,i)=>btn(esc(packInfo(id)?.name||id)+' ×','act-remove-pack','data-index="'+i+'"')).join(' ');
  shell('Act '+offer.incoming+' · '+esc(incoming.name),'<section class="scroll act-choices">'+
-  '<h3>Choose '+offer.picks+' incoming boosters</h3><p>You can choose a booster more than once. Main Deck minimum: '+incoming.minimum+'.</p>'+
+  '<h3>Choose '+offer.picks+' incoming boosters</h3><p>You can pick the same booster more than once. These boosters can appear in the next act’s shop. Main Deck minimum: '+incoming.minimum+'.</p>'+
   '<div class="act-pack-grid">'+offer.choices.map(id=>actPackButton(id,'act-add-pack','',actPicks.length>=offer.picks)).join('')+'</div>'+
   '<div class="act-selection" aria-live="polite">'+actPicks.length+' / '+offer.picks+' selected '+picks+'</div>'+
   '<h3>Carry forward up to '+offer.carry_limit+' boosters</h3><p>Selected boosters can appear in the next act’s shop.</p>'+

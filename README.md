@@ -4,7 +4,7 @@ This Edison-era fork builds on **Yu-Gi-Oh! Rogue Duelist**, created and designed
 
 The Edison campaign adds dated TCG cards through April 20, 2010, including [Duelist Pack: Kaiba](https://www.yugioh-card.com/en/products/past_products/dp_kaiba/). Existing run rules and card pools carry forward. Use face-up Tuners and matching materials, then choose **Synchro summon** from the Extra Deck in a Main Phase. Synchro Monsters share the existing Extra Deck limit with Fusions. Seto Kaiba and Bonz field Synchro packages in their tier 3 and tier 2 campaign decks, respectively.
 
-New solo runs have three nine-duel acts. Act 1 uses the [GOAT checklist](https://www.goatformat.com/cardpool.html) through The Lost Millennium. Act 2 runs through Light of Destruction, and Act 3 runs through Duelist Pack: Kaiba. Between acts, pick three incoming boosters and up to two previously offered boosters to keep in shop rotation. Edit the provisional minimums and pack counts in [the act configuration](data/campaign-acts.json).
+New solo runs have three nine-duel acts. Act 1 uses the [GOAT checklist](https://www.goatformat.com/cardpool.html) through The Lost Millennium. Act 2 runs through Light of Destruction, and Act 3 runs through Duelist Pack: Kaiba. Each act has eight native boosters in its run-specific shop rotation. Between acts, pick three boosters from the incoming rotation and up to two previously offered boosters to carry forward. Edit the provisional minimums and pack counts in [the act configuration](data/campaign-acts.json).
 
 A single-player roguelike deckbuilder built on Yu-Gi-Oh! duels: pick a duelist, draft from era-accurate booster packs, collect relics and fight through a campaign of CPU opponents.
 

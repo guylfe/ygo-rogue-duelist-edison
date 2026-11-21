@@ -66,6 +66,36 @@ def native_packs(act, starters=False):
             and (not starters or not edition({'act': act}, p).get('shop_only'))]
 
 
+def draft_rotations(preferred, rng):
+    """Draw the three native shop lineups once, before any campaign offers."""
+    rotations = {}
+    starters = dict.fromkeys(preferred[:3])
+    for act, rules in enumerate(ACTS, 1):
+        native = native_packs(act)
+        # GOAT pairs TLM with Machine, Warrior, or Chaos support. GX pairs LODT
+        # with Gladiator Beast or LIGHT support. Edison pairs TDGS with Tuners and Synchros.
+        featured = rules['featured_pack']
+        lineup = [featured] if featured in native else []
+        companions = [pid for pid in rules['companion_packs'] if pid in native and pid not in lineup]
+        if companions:
+            lineup.append(rng.choice(companions))
+        if act == 1:
+            lineup.extend(pid for pid in starters if pid in native and pid not in lineup)
+        limit = CONFIG['rotation_size']
+        lineup = lineup[:limit]
+        remaining = [pid for pid in native if pid not in lineup]
+        lineup.extend(rng.sample(remaining, min(len(remaining), limit - len(lineup))))
+        rotations[str(act)] = lineup
+    return rotations
+
+
+def native_rotation(run, act):
+    # Existing campaigns retain the lineups and offers they started with.
+    if 'pack_rotations' not in run:
+        return native_packs(act)
+    return run['pack_rotations'][str(act)]
+
+
 def rotation(run, draft_relic=False):
     from content import PACKS
     if not active(run):
@@ -73,7 +103,7 @@ def rotation(run, draft_relic=False):
     act = era(run)
     # Draft packs are available through their signature start or the dedicated relic.
     themed = [p['id'] for p in PACKS if p.get('draft_only') and openable(p['id'], act)] if draft_relic else []
-    return list(dict.fromkeys(native_packs(act) + run.get('carried_packs', []) + themed))
+    return list(dict.fromkeys(native_rotation(run, act) + run.get('carried_packs', []) + themed))
 
 
 def register_pack(run, pid):
@@ -124,8 +154,14 @@ def stocked_packs(run, ids, tied, available, rng):
 def starter_list(run, preferred, rng):
     """Keep the first three workable signature packs and advertise a supporting choice."""
     from content import PACK_BY_ID
-    fallback = native_packs(1, starters=True)
-    core = [pid if pid in PACK_BY_ID and openable(pid, 1) else rng.choice(fallback) for pid in preferred[:3]]
+    rotation = native_rotation(run, 1)
+    fallback = [pid for pid in rotation if not edition(run, PACK_BY_ID[pid]).get('shop_only')]
+    core = []
+    for pid in preferred[:3]:
+        if pid in rotation or PACK_BY_ID.get(pid, {}).get('draft_only') and openable(pid, 1):
+            core.append(pid)
+        else:
+            core.append(rng.choice(fallback))
     if not core:
         return [], []
     options = rng.sample(fallback, min(len(fallback), CONFIG['starter_options']))
@@ -148,13 +184,13 @@ def choose_starter(run, pid):
 
 def transition_offer(run, rng):
     incoming = era(run) + 1
-    packs = native_packs(incoming)
+    packs = native_rotation(run, incoming)
     # Rotate the preview once at the boundary. Persist it so returning to the
     # run never rerolls the choices or awards cards twice.
     offered = list(dict.fromkeys(run.get('offered_packs', []) + (run.get('pack_ids', []) if era(run) == 1 else [])))
     from content import PACK_BY_ID
     carryable = [pid for pid in offered if pid in PACK_BY_ID and openable(pid, incoming)]
-    anchor = {2: 'EN-LODT', 3: 'EN-TDGS'}[incoming]
+    anchor = ACTS[incoming - 1]['featured_pack']
     choices = [anchor] if anchor in packs else []
     eligible = [pid for pid in packs if pid not in choices]
     choices += rng.sample(eligible, min(len(eligible), CONFIG['transition_choices'] - len(choices)))
