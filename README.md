@@ -1,9 +1,11 @@
-# Yu-Gi-Oh! Rogue Duelist
+# Yu-Gi-Oh! Rogue Duelist — Edison
+
+This Edison-era fork builds on **Yu-Gi-Oh! Rogue Duelist**, created and designed by **[Thronior](https://github.com/Thronior)**. [Play Thronior’s original game](https://thronior.itch.io/ygo-rogue) or [explore the original source](https://github.com/Thronior/ygo-rogue-duelist).
 
 A single-player roguelike deckbuilder built on Yu-Gi-Oh! duels: pick a duelist, draft from era-accurate booster packs, collect relics and fight through a campaign of CPU opponents.
 
-- **Webapp:** [itch.io](https://thronior.itch.io/ygo-rogue). It also runs in desktop browsers.
-- **Android:** install `YGO-Rogue-Android.apk` from the latest [GitHub release](https://github.com/Thronior/ygo-rogue-duelist/releases) on Android 10 or newer. See [android/README.md](android/README.md) for controls and save behavior.
+- **Original webapp:** [itch.io](https://thronior.itch.io/ygo-rogue). It also runs in desktop browsers.
+- **Original Android release:** install `YGO-Rogue-Android.apk` from the latest [GitHub release](https://github.com/Thronior/ygo-rogue-duelist/releases) on Android 10 or newer. See [android/README.md](android/README.md) for controls and save behavior.
 
 The game is an unofficial fan project. Yu-Gi-Oh! cards, characters, artwork and music belong to their respective owners. See [assets/CREDITS.md](assets/CREDITS.md).
 
