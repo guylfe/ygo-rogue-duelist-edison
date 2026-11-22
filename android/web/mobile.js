@@ -84,6 +84,7 @@ import {openEmotePicker,showDuelEmote,clearDuelEmotes,setEmoteVolumeReader,posit
 import {rewardMarkup,mountRewardSlots} from './reward-slots.js?v=reward-persistent-1';
 
 import {duelLogMarkup} from './duel-log-ui.js';
+import {loadPlaytestDrafts,savePlaytestDraft,newPlaytestDraft,noteLimit,playtestArchived,playtestIssue,reportLink} from './edison-playtest.js';
 
 import {equippedTarget} from './equip-target.js';
 
@@ -410,7 +411,86 @@ window.addEventListener('pageshow',()=>window.resumeAudio());
 
 for(const event of ['pointerdown','keydown'])document.addEventListener(event,()=>{if(state&&!audioSuspended&&music.paused)track(packPresentation?'packs':screenMusic())},{capture:true});
 
-function shell(title,body,tools='',cls=''){app.innerHTML=`<div class="page ${cls}"><header><h2>${title}</h2><div class="tools">${tools}${screen==='draft'||screen==='routes'?btn(relicEyeIcon,'relic-ledger','aria-label="Relics" title="Relics"','navigation-icon-button'):''}${screen==='settings'?'':btn('Settings','settings')}${btn('<svg class="navigation-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg>','title','aria-label="Menu" title="Menu"','navigation-icon-button')}</div></header>${body}</div>`}
+function shell(title,body,tools='',cls=''){app.innerHTML=`<div class="page ${cls}"><header><h2>${title}</h2><div class="tools">${tools}${screen==='draft'||screen==='routes'?btn(relicEyeIcon,'relic-ledger','aria-label="Relics" title="Relics"','navigation-icon-button'):''}${canWritePlaytestNote()?playtestNoteButton():''}${screen==='settings'?'':btn('Settings','settings')}${btn('<svg class="navigation-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18"/></svg>','title','aria-label="Menu" title="Menu"','navigation-icon-button')}</div></header>${body}</div>`}
+
+const playtestScenes={starter:'Starter',draft:'Deck building',routes:'Route select',shop:'Shop',act_transition:'Act transition',duel:'Duel'};
+let playtestDraft=null,playtestRunKey=null,playtestSceneLog=[];
+function canWritePlaytestNote(){return !!state?.run&&!tagUI&&!lesson&&Object.hasOwn(playtestScenes,screen)}
+const playtestNoteButton=()=>btn('Playtest note','playtest-note','','playtest-note-button');
+function recordPlaytestScene(){
+ if(!canWritePlaytestNote())return;
+ const r=state.run,key=JSON.stringify([r.started_at,r.character,r.history_id]);
+ if(key!==playtestRunKey){playtestRunKey=key;playtestSceneLog=[]}
+ const scene=`${playtestScenes[screen]} · ${r.act?'Act '+r.act+' · ':''}Encounter ${r.round+1}`;
+ if(playtestSceneLog[0]!==scene)playtestSceneLog=[scene,...playtestSceneLog].slice(0,6);
+}
+function capturePlaytestDraft(){
+ recordPlaytestScene();
+ const r=state.run,inDuel=screen==='duel';
+ return newPlaytestDraft({Version:replayVersion,Screen:playtestScenes[screen],Act:r.act,
+  Character:character()?.name,Encounter:Number.isInteger(r.round)?r.round+1:null,
+  Opponent:inDuel?content.characters[r.opponent]?.name:null,Turn:inDuel&&snapshot?.turn>0?snapshot.turn:null},
+  [...(inDuel?engine?.logs||[]:[]),...playtestSceneLog]);
+}
+function openPlaytestNote(startNew=false,selectedId=null){
+ const saved=loadPlaytestDrafts();
+ if(selectedId)playtestDraft=saved.find(item=>item.id===selectedId)||playtestDraft;
+ if(startNew||!playtestDraft)playtestDraft=(startNew?null:saved[0])||(canWritePlaytestNote()?capturePlaytestDraft():null);
+ const draft=playtestDraft;
+ if(!draft)return;
+ if(screen==='duel')modal.dataset.duelOptionsPause='1';
+ const context=draft.details.map(([key,value])=>`${key}: ${value}`).join(' · ');
+ const choices=[draft,...saved.filter(item=>item.id!==draft.id)];
+ dialog('Playtest note',`<div class="playtest-editor">
+  <p>Reports go to the public <strong>guylfe/ygo-rogue-duelist-edison/playtest-feedback</strong> folder. Your note and the game details below will be public. Leave out personal information.</p>
+  ${choices.length>1?`<label>Saved reports <select id="edison-playtest-drafts">${choices.map(item=>`<option value="${esc(item.id)}">${esc(item.note.trim().slice(0,48)||'New note')}${item.archived?' (published)':''}</option>`).join('')}</select></label>`:''}
+  <label for="edison-playtest-note">Note (up to ${noteLimit} characters)</label>
+  <textarea id="edison-playtest-note" rows="4" maxlength="${noteLimit}" ${draft.opened?'readonly':''}>${esc(draft.note)}</textarea>
+  <details><summary>Game context and recent log</summary><p>${esc(context)}</p><pre>${esc(draft.log.join('\n')||'No recent game events were available.')}</pre></details>
+  <p class="playtest-reference">Report ${esc(draft.id)}</p>
+  <p id="playtest-status" role="status">${draft.archived?'Published on GitHub.':draft.opened?'Submit on GitHub while signed in as guylfe, then check the archive here.':'Draft saves on this device as you type.'}</p>
+  <div class="actions">${draft.archived?btn('View archived report','playtest-view','','primary'):
+   `${btn(draft.opened?'Reopen GitHub':'Open GitHub to submit','playtest-submit','','primary')}${draft.opened?btn('Check archive','playtest-check'):''}`}
+   ${canWritePlaytestNote()?btn('New note','playtest-new',draft.archived||draft.note?'':'hidden'):''}</div>
+ </div>`);
+ modal.querySelector('#edison-playtest-drafts')?.addEventListener('change',event=>openPlaytestNote(false,event.target.value));
+ const note=modal.querySelector('#edison-playtest-note');
+ note.addEventListener('input',()=>{
+  draft.note=note.value;
+  const next=modal.querySelector('[data-do="playtest-new"]');
+  if(next)next.hidden=!draft.note.trim();
+  modal.querySelector('#playtest-status').textContent=savePlaytestDraft(draft)?'Draft saved on this device.':'Local storage is unavailable. Keep this window open to retain your note.';
+ });
+}
+function openPlaytestLink(url){
+ if(window.ShadowNative?.openEdisonPlaytestLink)window.ShadowNative.openEdisonPlaytestLink(url);
+ else window.open(url,'_blank','noopener,noreferrer');
+}
+async function playtestNoteAction(action,button){
+ if(action==='playtest-note'||action==='playtest-new'){openPlaytestNote(action==='playtest-new');return}
+ const draft=playtestDraft,status=modal.querySelector('#playtest-status');
+ if(!draft||!status)return;
+ if(action==='playtest-view'){openPlaytestLink(reportLink(draft.id));return}
+ if(navigator.onLine===false){status.textContent='You’re offline. Your draft is still saved on this device.';return}
+ try{
+  if(action==='playtest-submit'){
+   const {url}=playtestIssue(draft);
+   if(!savePlaytestDraft({...draft,opened:true}))throw Error('Could not save this draft on the device.');
+   draft.opened=true;
+   openPlaytestNote();
+   openPlaytestLink(url);
+  }
+  if(action==='playtest-check'){
+   button.disabled=true;
+   status.textContent='Checking GitHub…';
+   if(!await playtestArchived(draft)){status.textContent='The archive is not available yet. Submit on GitHub, then check again.';return}
+   if(!savePlaytestDraft({...draft,archived:true}))throw Error('The report is published. The device could not save the receipt.');
+   draft.archived=true;
+   if(status.isConnected)openPlaytestNote();
+  }
+ }catch(error){status.textContent=error.message||'GitHub could not be reached. Your draft is still saved on this device.'}
+ finally{button.disabled=false}
+}
 
 let inspectParent=null;
 
@@ -740,7 +820,7 @@ function summonedStats(live,seq){if((tagUI&&!engine?.aiModifiers)||typeof engine
 
 let titleMotion=null;
 
-function render(){if(screen!=='shop'&&(shopkeeperSmall||shopkeeperShrinking)){cancelShopkeeperShrink();shopkeeperSmall=false;resetShopkeeperRightClicks()}syncBackgroundAnimations();if(screen!=='duel')clearDuelDOM(app);if(screen!=='ending')clearShadowVictory();titleMotion?.destroy();titleMotion=null;if(screen==='tag'){tagUI?.render();return}removeActions();if(screen!=='duel')clearTimeout(aiTimer);({title:renderTitle,characters:renderCharacters,draft:renderDraft,starter:renderActStarter,act_transition:renderActTransition,routes:renderRoutes,shop:renderShop,achievements:renderAchievements,relics:renderRelics,settings:renderSettings,cosmetics:renderCosmetics,tutorial:renderTutorial,collection:renderCollection,stats:renderStats,gallery:renderGallery,ending:renderEnding,duel:renderDuel})[screen]();renderEdisonStartupUpdate();renderActTools();track(screenMusic())}
+function render(){if(screen!=='shop'&&(shopkeeperSmall||shopkeeperShrinking)){cancelShopkeeperShrink();shopkeeperSmall=false;resetShopkeeperRightClicks()}syncBackgroundAnimations();if(screen!=='duel')clearDuelDOM(app);if(screen!=='ending')clearShadowVictory();titleMotion?.destroy();titleMotion=null;if(screen==='tag'){tagUI?.render();return}removeActions();if(screen!=='duel')clearTimeout(aiTimer);({title:renderTitle,characters:renderCharacters,draft:renderDraft,starter:renderActStarter,act_transition:renderActTransition,routes:renderRoutes,shop:renderShop,achievements:renderAchievements,relics:renderRelics,settings:renderSettings,cosmetics:renderCosmetics,tutorial:renderTutorial,collection:renderCollection,stats:renderStats,gallery:renderGallery,ending:renderEnding,duel:renderDuel})[screen]();renderEdisonStartupUpdate();recordPlaytestScene();renderActTools();track(screenMusic())}
 
 let edisonStartupUpdateDismissed=false;
 function renderEdisonStartupUpdate(){
@@ -1376,7 +1456,7 @@ function renderSettings(){
   display:`<h2>Display</h2><div class="set-row settings-language"><span class="set-text"><b>Language</b><small>Interface and card texts.</small></span><button class="settings-language-button" data-do="language" aria-label="Language" title="Language">${flagSvg(currentLanguage())}<span>${esc(LANGUAGES.find(([code])=>code===currentLanguage())?.[1]||'English')}</span></button></div>${displaySettings()}${duelBackgroundSetting()}${window.ShadowNative?'':settingToggle('Preload Game Assets','Load music, artwork and backgrounds at startup. Sound effects always preload.','data-preload-visuals',preloadVisualPreference()==='all')}`,
   // Saved Data lives in the Devices & App tab (2026-11-06).
   saves:`<h3 class="saved-data-head">Saved Data</h3><p class="muted">Your progress is always saved on this device, and updating the app keeps it.</p><div class="set-group">${cloudSettingsMarkup({enabled:deviceBackup.isEnabled(),...deviceBackup.status()},btn,esc)}</div><details class="set-group"><summary>Other recovery options</summary><label class="set-file">Import a save file <input id="device-recovery-file" type="file" accept=".json,application/json"></label><p class="muted">A save backup exported from the browser version, or a recovery file from the admin.</p></details><details class="set-group settings-danger"><summary>Reset Progress</summary><p>Remove all saved progress on this device.</p>${btn('Delete All Progress','reset-progress','','danger')}${deviceBackup.status().code?`<p>Remove your cloud save from the server. Progress on this device stays.</p>${btn('Delete My Cloud Save','cloud-delete','','danger')}`:''}</details>`,
-  devices:`<h2>Devices &amp; App</h2><p class="muted">Link Devices shares unlocks, achievements, card sleeves and challenge levels between your devices.</p><div class="settings-actions">${window.ShadowNative?.openEdisonUpdate?btn('Check for Edison updates','edison-update'):''}${btn('Link Devices','device-sync-open')}</div>`,
+  devices:`<h2>Devices &amp; App</h2><p class="muted">Link Devices shares unlocks, achievements, card sleeves and challenge levels between your devices.</p><div class="settings-actions">${window.ShadowNative?.openEdisonUpdate?btn('Check for Edison updates','edison-update'):''}${btn('Link Devices','device-sync-open')}${(playtestDraft||loadPlaytestDrafts().length)?playtestNoteButton():''}</div>`,
   replays:`<h2>Replays &amp; Stats</h2><div class="set-row"><span class="set-text"><b>Duel Replays</b><small>Your latest 100 duels are kept on this device. Uploading them helps improve the CPU: decks, actions and results only, no account details.</small></span>${btn('Upload Replays','upload-replays')}</div><p id="replay-status" role="status" aria-live="polite"></p>${settingToggle('Share Global Statistics','Anonymous totals for Global Stats and Character Stats. No names or save files.','data-usage-stats',statsEnabled())}`,
   about:`<h2>About and Tutorial</h2><div class="settings-actions">${btn('Tutorial Duel','lesson-start')}${btn('How to Play','tutorial')}</div><p class="notice settings-about">Yu-Gi-Oh: Rogue Duelist · A private fan experiment.<br>Original game created and designed by Thronior.<br>Card and character artwork © Konami. Duel rules: Project Ignis / ocgcore-wasm.</p><details class="set-group settings-advanced"><summary>Advanced</summary><label for="cheat-code">Testing Code</label><div class="settings-code"><input id="cheat-code" placeholder="Enter code">${btn('Apply','cheat')}</div></details>`
  };
@@ -2527,6 +2607,7 @@ async function togglePackFavourite(id){
  try{await command('settings',state.settings)}catch(error){toast(error.message)}
 }
 async function action(a,el={dataset:{}},silent=false){
+ if(a?.startsWith('playtest-'))return playtestNoteAction(a,el);
  if(a==='pack-favourite'){void togglePackFavourite(el.dataset.pack);return}
  if(a==='relic-lock'){if(busy)return;busy=true;try{await command('relic-lock',+el.dataset.index);renderShop();app.querySelector(`.relic-lock[data-index="${el.dataset.index}"]`)?.classList.add('fav-pop')}finally{busy=false}return}
  if(a==='collection-favourite-packs'){collectionFavouritePacks=!collectionFavouritePacks;collectionPage=0;renderCollection();return}
@@ -2590,7 +2671,7 @@ async function action(a,el={dataset:{}},silent=false){
  if(a==='characters'&&lessonShouldAsk()){dialog('Do you know how to play Yu-Gi-Oh?',`<p>If you are new to the card game, a short tutorial Duel teaches the phases, the kinds of cards and the basic plays.</p>${btn('Yes, start my run','lesson-yes','','primary')}${btn('No, teach me','lesson-no')}`);return}
  if(a==='duel-options'&&!tagUI)modal.dataset.duelOptionsPause='1';
 
- if(a==='duel-options'&&tagUI?.isCollector){dialog('Options',`<div class="duel-options-grid">${btn('Log','log')}${btn('Settings','duel-settings')}${btn('Exit','pause')}${btn('Surrender','surrender')}</div>`);return}if(a==='duel-options'){dialog('Options',`<div class="duel-options-grid">${btn('Relics','relic-ledger')}${btn('Curses','active-curses')}${btn('Log','log')}${btn('Coin bonuses','coin-bonuses')}${btn('Flag behaviour','flag-behaviour')}${btn('Settings','duel-settings')}${btn(tagUI?'Exit':'Save / Menu','pause')}${btn('Surrender','surrender')}</div>`);return}
+ if(a==='duel-options'&&tagUI?.isCollector){dialog('Options',`<div class="duel-options-grid">${btn('Log','log')}${btn('Settings','duel-settings')}${btn('Exit','pause')}${btn('Surrender','surrender')}</div>`);return}if(a==='duel-options'){dialog('Options',`<div class="duel-options-grid">${btn('Relics','relic-ledger')}${btn('Curses','active-curses')}${btn('Log','log')}${btn('Coin bonuses','coin-bonuses')}${btn('Flag behaviour','flag-behaviour')}${canWritePlaytestNote()?playtestNoteButton():''}${btn('Settings','duel-settings')}${btn(tagUI?'Exit':'Save / Menu','pause')}${btn('Surrender','surrender')}</div>`);return}
 
  if(a==='duel-settings'){dialog('Settings',duelSettingsMarkup());return}
  if(a==='character-settings'){openCharacterSettings(selected);return}

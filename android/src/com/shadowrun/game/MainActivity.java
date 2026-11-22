@@ -253,6 +253,21 @@ public final class MainActivity extends Activity {
             });
         }
 
+        @JavascriptInterface public void openEdisonPlaytestLink(String address) {
+            if (address == null || address.length() > 7000) return;
+            Uri uri = Uri.parse(address);
+            if (!"https".equals(uri.getScheme()) || !"github.com".equals(uri.getHost()) || uri.getUserInfo() != null ||
+                    (uri.getPort() != -1 && uri.getPort() != 443) || uri.getFragment() != null) return;
+            String path = uri.getEncodedPath();
+            String repo = "/guylfe/ygo-rogue-duelist-edison";
+            if (!(repo + "/issues/new").equals(path) &&
+                    !(path != null && path.matches(repo + "/blob/main/playtest-feedback/[0-9a-f-]{36}\\.md"))) return;
+            runOnUiThread(() -> {
+                try { startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW, uri)); }
+                catch (android.content.ActivityNotFoundException e) { exportNotice("No browser is available. Your draft is saved."); }
+            });
+        }
+
         private final AtomicFile file = new AtomicFile(new File(getFilesDir(), "campaign.json"));
         @JavascriptInterface public synchronized String load() {
             try { return new String(file.readFully(), StandardCharsets.UTF_8); } catch(IOException e) { return "{}"; }

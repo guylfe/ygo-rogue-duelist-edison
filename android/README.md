@@ -18,6 +18,10 @@ Run `python -B tools/build_android.py` from the repository root. Use `--sync-onl
 
 Saves are app-private and use Android AtomicFile. Duel responses are journaled and replayed on Continue. Android and browser progress are separate; there is no automatic cloud synchronization. Uninstalling the Android app deletes its private save.
 
+## Playtest notes
+
+During a solo run, open **Playtest note**. In a duel it is under **Options** and pauses play while the note is open. Drafts and the captured game context stay on this device until you choose to open GitHub. Submit the prepared public issue while signed in as `guylfe`, then use **Check archive** or follow the link in the issue to the report in [playtest-feedback](https://github.com/guylfe/ygo-rogue-duelist-edison/tree/main/playtest-feedback). Leave the prepared title and body intact. You can return to the same duel and reopen saved reports from **Settings → Devices & App**.
+
 ## Controls
 
 - Tap your card, then its floating action button. Tap a glowing zone to place it.
