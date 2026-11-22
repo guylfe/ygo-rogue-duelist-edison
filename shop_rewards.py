@@ -414,10 +414,11 @@ def route_rewards(routes,rng,profile=None,runs=None):
   pick=rng.choices(range(len(keys)),weights=use,k=1)[0]
   chosen_keys.append(keys.pop(pick));weights.pop(pick)
  if deck:rng.shuffle(chosen_keys)
- from campaign_acts import active, home_pack, rotation
+ from campaign_acts import active, home_pack, personal_pack, rotation
  allow_act=isinstance(runs,dict) and active(runs)
  candidates=(PACK_BY_ID[pid] for pid in rotation(runs)) if allow_act else PACKS
- packs=[p['id'] for p in candidates if (allow_act or not p.get('draft_only')) and pack_offered(p,rng) and unlocks.available('pack',p['id'],profile)]
+ personal=personal_pack(runs) if allow_act else None
+ packs=[p['id'] for p in candidates if p['id']!=personal and (allow_act or not p.get('draft_only')) and pack_offered(p,rng) and unlocks.available('pack',p['id'],profile)]
  signatures=[home_pack(runs,i) for i in order] if allow_act else [None]*count
  regular_count=signatures.count(None)
  packs=[pid for pid in packs if pid not in signatures]

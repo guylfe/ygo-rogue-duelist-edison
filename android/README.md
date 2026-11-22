@@ -2,7 +2,7 @@
 
 > **Platform status:** The native Windows desktop edition is deprecated and is no longer maintained or distributed. The supported versions are this Android app and the webapp; the webapp also works in desktop browsers. Existing saves from the deprecated native app can be imported through the webapp Settings.
 
-Install `Rogue-Duelist-Edison-Three-Acts.apk` on Android 10 or newer from the [Edison Android playtest release](https://github.com/guylfe/ygo-rogue-duelist-edison/releases/tag/edison-three-acts-android-playtest). Use a current Android System WebView. The APK bundles the card images, tokens, boosters, characters, music, campaign rules and duel scripts for offline solo play.
+Install the signed APK from the [Edison playtest release](https://github.com/guylfe/ygo-rogue-duelist-edison/releases/tag/edison-v0.2.41-playtest) on Android 10 or newer. Use a current Android System WebView. The APK bundles the card images, tokens, boosters, characters, music, campaign rules and duel scripts for offline solo play.
 
 This build uses the Project Ignis duel core through `ocgcore-wasm`, with a touch-friendly field layout. It does not embed the native EDOPro GUI.
 

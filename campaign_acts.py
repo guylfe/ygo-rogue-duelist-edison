@@ -42,8 +42,14 @@ def edition(run, pack):
     if not active(run):
         return pack
     if pack.get('goat_slots') and era(run) < pack['home_act']:
-        slots = pack['goat_slots']
-        rarities = {str(cid): [label] for key, label in (('common','Common'),('rare','Rare')) for cid in slots[key]}
+        goat = pack['goat_slots']
+        rarities = {str(cid): [label] for key, label in (('common','Common'),('rare','Rare')) for cid in goat[key]}
+        slots = goat
+        if era(run) > 1:
+            # GX gets the legal cards from the signature pack plus its GOAT support.
+            signature = set(pack['common'] + pack['rare'])
+            slots = {key: pack[key] + [cid for cid in goat[key] if cid not in signature] for key in ('common','rare')}
+            rarities.update(pack['rarities'])
         pack = dict(pack, **slots, rare_display=slots['rare'], rarities=rarities)
     from campaign import card_identity, normal_starter
     card_fields = ('common', 'rare', 'starter_support', 'rare_display')
@@ -120,10 +126,21 @@ def home_pack(run, character):
     return None
 
 
+def personal_pack(run):
+    from content import CHARACTERS, PACK_BY_ID
+    if not active(run) or run.get('history_mode') == 'tag':
+        return None
+    pid = CHARACTERS[run['character']]['pack']
+    if pid in PACK_BY_ID and openable(pid, era(run)):
+        return pid
+    return None
+
+
 def shop_pack_available(run, pid):
     from content import PACK_BY_ID
     pack = PACK_BY_ID.get(pid, {})
-    return pid in rotation(run) or (pack.get('home_act') == era(run) and not run.get('loop'))
+    return bool(pid) and (pid == personal_pack(run) or pid in rotation(run)
+                          or (pack.get('home_act') == era(run) and not run.get('loop')))
 
 
 def register_pack(run, pid):
@@ -132,8 +149,8 @@ def register_pack(run, pid):
 
 
 def pin_options(run):
-    from content import PACK_BY_ID
-    if not active(run):
+    from content import PACK_BY_ID, randomized_run
+    if not active(run) or randomized_run(run):
         return []
     eligible = set(rotation(run))
     eligible.update(pid for pid in run.get('opened_packs', []) if shop_pack_available(run, pid))
@@ -148,18 +165,37 @@ def pin(run, pid):
     if pid and pid not in pin_options(run):
         raise ValueError('Open this booster in the current rotation before marking it.')
     run['pinned_pack'] = pid or None
-    stock = [item for item in run.get('shop', []) if item['kind'] == 'pack']
-    if pid and all(item['id'] != pid for item in stock):
-        slot = next((item for item in reversed(stock) if not item['sold'] and not item['opponent_pack']), None)
-        if slot:
-            slot['id'] = pid
-            run['offered_packs'] = list(dict.fromkeys(run.get('offered_packs', []) + [pid]))
+    if pid:
+        stock = [item for item in run.get('shop', []) if item['kind'] == 'pack']
+        reserve_shop_packs(run, stock)
 
 
-def stocked_packs(run, ids, tied, available, rng):
+def reserve_shop_packs(run, stock):
+    """Use ordinary shop slots for the duelist's and the player's marked boosters."""
+    if not active(run):
+        return False
+    personal = personal_pack(run)
     pinned = run.get('pinned_pack')
-    if len(ids) > tied and pinned in pin_options(run) and pinned not in ids:
-        ids[-1] = pinned
+    if pinned not in pin_options(run):
+        pinned = None
+    changed = False
+    for pid in dict.fromkeys((personal, pinned)):
+        # A sold item counts as an offer and keeps its purchase state on reload.
+        if not pid or any(item['id'] == pid for item in stock):
+            continue
+        slot = next((item for item in reversed(stock)
+                     if not item['sold'] and not item.get('opponent_pack')
+                     and (pid == personal or item['id'] != personal)), None)
+        if slot is not None:
+            slot['id'] = pid
+            offered = run.setdefault('offered_packs', [])
+            if pid not in offered:
+                offered.append(pid)
+            changed = True
+    return changed
+
+
+def distinct_shop_packs(ids, tied, available, rng):
     used = set(ids[:tied])
     for i in range(tied, len(ids)):
         if ids[i] in used:
@@ -167,9 +203,13 @@ def stocked_packs(run, ids, tied, available, rng):
             if alternatives:
                 ids[i] = rng.choice(alternatives)
         used.add(ids[i])
-    from content import PACK_BY_ID
-    run['offered_packs'] = list(dict.fromkeys(run.get('offered_packs', []) + [pid for pid in ids if pid in PACK_BY_ID]))
     return ids
+
+
+def record_shop_packs(run, stock):
+    from content import PACK_BY_ID
+    offered = [item['id'] for item in stock if item['id'] in PACK_BY_ID]
+    run['offered_packs'] = list(dict.fromkeys(run.get('offered_packs', []) + offered))
 
 
 def starter_list(run, preferred, rng):

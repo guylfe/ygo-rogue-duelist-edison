@@ -794,9 +794,10 @@ def install(g):
   save(run)
  def ensure_shop_packs(run,rng=random):
   if run.get('stage')!='shop' or copies_deck(run) or CHARACTERS[run['character']].get('engine_deck'):return
-  current=[x['id'] for x in run.get('shop',[]) if x['kind']=='pack']
+  stock=[item for item in run.get('shop',[]) if item['kind']=='pack']
+  current=[item['id'] for item in stock]
   count=shop_pack_count(run)-len(current)
-  if count<=0:return
+  if count<=0:return acts.reserve_shop_packs(run,stock)
   profile=storage.profile()
   rotation=acts.rotation(run,ar.has(run,'duelist_catalogue'))
   options=[p['id'] for p in (PACK_BY_ID[pid] for pid in rotation) if (not p.get('draft_only') or p['id'] in run.get('carried_packs',[]) or ar.has(run,'duelist_catalogue')) and p['id'] not in current and shop_rewards.pack_offered(p,rng) and unlocks.available('pack',p['id'],profile)]
@@ -804,13 +805,11 @@ def install(g):
   if random_cards.has_pool(run):options=[random_cards.RANDOM_PACK]*count
   price=ar.price(run,'pack',max(1,round(35*max(0,1-amount(run,'discount')/100))))
   additions=options if random_cards.has_pool(run) else rng.sample(options,min(count,len(options)))
-  if acts.active(run) and run.get('pinned_pack') in acts.pin_options(run) and run['pinned_pack'] not in current and additions:
-   pin=run['pinned_pack']
-   if pin not in additions:additions[-1]=pin
-  for pid in additions:run['shop'].append(dict(kind='pack',id=pid,price=price,sold=False,opponent_pack=False))
-  if acts.active(run):
-   run['offered_packs']=list(dict.fromkeys(run.get('offered_packs',[])+additions))
-  return bool(options)
+  new_items=[dict(kind='pack',id=pid,price=price,sold=False,opponent_pack=False) for pid in additions]
+  run['shop'].extend(new_items)
+  changed=acts.reserve_shop_packs(run,stock+new_items)
+  if acts.active(run) and new_items:acts.record_shop_packs(run,new_items)
+  return changed or bool(new_items)
  def restock(run,rng=random,general_stock=False,spend=0):
   import payment
   challenge_levels.suppress(run)
@@ -893,9 +892,8 @@ def install(g):
   others=rng.sample(pack_pool,min(len(pack_pool),pack_count-len(tied_ids)))
   pack_ids=tied_ids+others
   personal=CHARACTERS[run.get('shop_pack_character',run['character'])]['pack']
-  # A Tag personal pack that is already a guaranteed pack keeps its random slot.
-  home_personal=personal==acts.home_pack(run,run['character'])
-  if (home_personal or not general_stock or ar.has(run,'morphing_jar_2')) and len(pack_ids)>2 and (home_personal or personal in rotation) and personal in PACK_BY_ID and not (len(tied_ids)>1 and personal in tied_ids) and not (copies_deck(run) or CHARACTERS[run['character']].get('engine_deck')):pack_ids[2]=personal
+  # Keep the original stock rule for modes outside the three-act solo campaign.
+  if not acts.active(run) and (not general_stock or ar.has(run,'morphing_jar_2')) and len(pack_ids)>2 and personal in rotation and personal in PACK_BY_ID and not (len(tied_ids)>1 and personal in tied_ids) and not (copies_deck(run) or CHARACTERS[run['character']].get('engine_deck')):pack_ids[2]=personal
   # The slots after the character pack (Booster Shelf, Tag's extra packs) never repeat a pack already on the shelf.
   for n in range(3,len(pack_ids)):
    if pack_ids[n] in pack_ids[:n]:
@@ -909,8 +907,12 @@ def install(g):
   elif not fixed_deck(run) and not CHARACTERS[run['character']].get('engine_deck') and len(tied_ids)==1 and len(pack_ids)>=3 and random_cards.allowed(run) and rng.random()<random_cards.SHOP_CHANCE:
    pack_ids[1]=random_cards.RANDOM_PACK
   if acts.active(run) and not randomized_shop:
-   pack_ids=acts.stocked_packs(run,pack_ids,len(tied_ids),pack_pool,rng)
-  items += [dict(kind='pack',id=p,price=35,sold=False,opponent_pack=(n<len(tied_ids))) for n,p in enumerate(pack_ids)]
+   pack_ids=acts.distinct_shop_packs(pack_ids,len(tied_ids),pack_pool,rng)
+  boosters=[dict(kind='pack',id=p,price=35,sold=False,opponent_pack=(n<len(tied_ids))) for n,p in enumerate(pack_ids)]
+  if acts.active(run) and not randomized_shop:
+   acts.reserve_shop_packs(run,boosters)
+   acts.record_shop_packs(run,boosters)
+  items += boosters
   pre=json.loads((g.ROOT/'data/preconstructed.json').read_text(encoding='utf8'))
   chance=min(pre['max_chance'],pre['base_chance']+max(0,run.get('gold_leaving_shop',0))*pre['chance_per_gold'])
   decks=[d for d in pre['decks'] if all(acts.allows(run,cid) for cid in d['cards'])]

@@ -50,6 +50,7 @@ def dispatch(action, value=None):
 
 def verify_stock(run):
     allowed = set(acts.rotation(run,approved_relics.has(run,'duelist_catalogue')))
+    allowed.add(acts.personal_pack(run))
     for item in run['shop']:
         if item['kind']=='pack' and item['id']!='RANDOM-PACK':
             assert item['id'] in allowed or item['id']==run.get('pinned_pack') or (

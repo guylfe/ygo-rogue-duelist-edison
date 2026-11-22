@@ -6,12 +6,12 @@ The Edison campaign adds dated TCG cards through April 20, 2010, including [Duel
 
 New solo runs have three nine-duel acts. Act 1 uses the [GOAT checklist](https://www.goatformat.com/cardpool.html) through The Lost Millennium. Act 2 runs through Light of Destruction, and Act 3 runs through Duelist Pack: Kaiba. Each act has eight native boosters in its run-specific shop rotation. Between acts, pick three boosters from the incoming rotation and up to two previously offered boosters to carry forward. Edit the provisional minimums and pack counts in [the act configuration](data/campaign-acts.json).
 
-Choose from Duel Monsters, GX, and 5D's. The GX and 5D's duelists start with a GOAT edition of their named draft booster. Their full signature packs and historical supporting boosters arrive in their home acts, where these duelists also appear as CPU opponents.
+Choose from Duel Monsters, GX, and 5D's. Duelists with a named booster have it in the solo shop in every act, alongside the opponent's offer and any distinct marked booster. GX and 5D's duelists start with a GOAT edition of their booster. Later editions draw from the cards legal for that act, and the full signature packs arrive in their home acts, where these duelists also appear as CPU opponents.
 
 A single-player roguelike deckbuilder built on Yu-Gi-Oh! duels: pick a duelist, draft from era-accurate booster packs, collect relics and fight through a campaign of CPU opponents.
 
 - **Original webapp:** [itch.io](https://thronior.itch.io/ygo-rogue). It also runs in desktop browsers.
-- **Edison Android playtest:** [Download the signed three-act APK](https://github.com/guylfe/ygo-rogue-duelist-edison/releases/tag/edison-three-acts-android-playtest). It installs as Rogue Duelist: Edison on Android 10 or newer.
+- **Edison playtest:** [Download the signed Android APK or web ZIP](https://github.com/guylfe/ygo-rogue-duelist-edison/releases/tag/edison-v0.2.41-playtest). The APK installs as Rogue Duelist: Edison on Android 10 or newer.
 - **Original Android release:** install `YGO-Rogue-Android.apk` from the latest [GitHub release](https://github.com/Thronior/ygo-rogue-duelist/releases) on Android 10 or newer. See [android/README.md](android/README.md) for controls and save behavior.
 
 The game is an unofficial fan project. Yu-Gi-Oh! cards, characters, artwork and music belong to their respective owners. See [assets/CREDITS.md](assets/CREDITS.md).
