@@ -1,0 +1,59 @@
+name: Edison upstream releases
+
+on:
+  schedule:
+    - cron: '23 5 * * *'
+  workflow_dispatch:
+    inputs:
+      upstream_tag:
+        description: 'Optional Thronior tag to check'
+        required: false
+        type: string
+
+concurrency:
+  group: edison-upstream
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      branch: ${{ steps.candidate.outputs.branch }}
+      commit: ${{ steps.candidate.outputs.commit }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: main
+          fetch-depth: 0
+      - id: candidate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          UPSTREAM_TAG: ${{ inputs.upstream_tag }}
+        run: |
+          args=(--repo "$GITHUB_REPOSITORY")
+          if [ -n "$UPSTREAM_TAG" ]; then args+=(--tag "$UPSTREAM_TAG"); fi
+          python3 -B .github/edison_upstream.py "${args[@]}"
+
+  regressions:
+    needs: detect
+    if: needs.detect.outputs.branch != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ needs.detect.outputs.commit }}
+          persist-credentials: false
+      - name: Campaign and save regressions
+        run: |
+          python3 -B tools/test_personal_boosters.py
+          python3 -B tools/test_campaign_acts.py
+          python3 -B tools/test_edison_roster.py
+          node android/test_android_save_path.mjs
+          if [ -f tools/pwa/test_storage_quota.mjs ]; then node tools/pwa/test_storage_quota.mjs; fi
