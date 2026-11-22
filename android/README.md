@@ -2,7 +2,7 @@
 
 > **Platform status:** The native Windows desktop edition is deprecated and is no longer maintained or distributed. The supported versions are this Android app and the webapp; the webapp also works in desktop browsers. Existing saves from the deprecated native app can be imported through the webapp Settings.
 
-Install the signed APK from the [Edison playtest release](https://github.com/guylfe/ygo-rogue-duelist-edison/releases/tag/edison-v0.2.41-playtest) on Android 10 or newer. Use a current Android System WebView. The APK bundles the card images, tokens, boosters, characters, music, campaign rules and duel scripts for offline solo play.
+Install the signed APK from the [latest Edison release](https://github.com/guylfe/ygo-rogue-duelist-edison/releases/latest) on Android 10 or newer. Use a current Android System WebView. The APK bundles the card images, tokens, boosters, characters, music, campaign rules and duel scripts for offline solo play.
 
 This build uses the Project Ignis duel core through `ocgcore-wasm`, with a touch-friendly field layout. It does not embed the native EDOPro GUI.
 
@@ -10,11 +10,11 @@ The Python campaign modules are copied into the APK and run offline with Pyodide
 
 ## Updating
 
-Rogue Duelist: Edison uses application ID `io.github.guylfe.rogueduelist.edison` and a separate Android save directory. For an update, install a newer Edison APK over your existing Edison installation. The Android playtest uses signed full APKs from the fork's release page.
+Rogue Duelist: Edison uses application ID `io.github.guylfe.rogueduelist.edison` and a separate Android save directory. Install v0.2.42 over your existing Edison installation to add in-game updates and keep your saves. For later releases, open **Settings → Devices &amp; App → Check for Edison updates**. Select Download update, then Install update, and confirm the normal Android prompt. The first in-game install may ask you to allow updates from this app.
 
 On Windows, set `JAVA_HOME` to JDK 17 and `ANDROID_HOME` to an SDK with Android 35 and Build Tools 35.0.0. Install Node and Python 3 with Pillow. Set `EDISON_ANDROID_KEYSTORE` to the existing private PKCS#12 key outside the checkout and provide its password through `EDISON_ANDROID_KEYSTORE_PASSWORD`. The build checks the signing certificate. Preserve the key and its password for future updates.
 
-Run `python -B tools/build_android.py` from the repository root. For a published build, set `EDISON_ANDROID_VERSION_CODE` to an integer greater than the previous Android release code. Set `ANDROID_APK_OUTPUT` to override the default location in `releases/`. Run `python -B tools/finalize_releases.py` to write its checksum and release manifest. Use `--sync-only` with the build script to refresh web assets without signing. `web/build.json` records the shared-campaign checksum.
+Run `python -B tools/build_android.py` from the repository root. Use `--sync-only` to refresh web assets without signing. `web/build.json` records the shared-campaign checksum. See the [Edison release process](../docs/edison-release-process.md) for signing, updater metadata and publication.
 
 Saves are app-private and use Android AtomicFile. Duel responses are journaled and replayed on Continue. Android and browser progress are separate; there is no automatic cloud synchronization. Uninstalling the Android app deletes its private save.
 

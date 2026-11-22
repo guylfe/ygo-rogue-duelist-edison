@@ -200,6 +200,10 @@ public final class MainActivity extends Activity {
             runOnUiThread(MainActivity.this::finishAndRemoveTask);
         }
 
+        @JavascriptInterface public void openEdisonUpdate() {
+            runOnUiThread(() -> startActivity(new android.content.Intent(MainActivity.this, EdisonUpdateActivity.class)));
+        }
+
         private final AtomicFile file = new AtomicFile(new File(getFilesDir(), "campaign.json"));
         @JavascriptInterface public synchronized String load() {
             try { return new String(file.readFully(), StandardCharsets.UTF_8); } catch(IOException e) { return "{}"; }

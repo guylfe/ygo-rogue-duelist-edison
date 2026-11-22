@@ -11,9 +11,8 @@ os.environ['TMP']=os.environ['TEMP']=str(BUILD_TEMP)
 import campaign as game,content,approved_relics
 A=ROOT/'android';WEB=A/'web';BUILD=A/'build';DEP=ROOT/'dependencies/android'
 SLEEVE_HEIGHT=307  # shipped card sleeve height (sync below)
-APK_NAME='Rogue-Duelist-Edison-Three-Acts.apk'
 SIGNING_ALIAS='edison-playtest'
-SIGNING_FINGERPRINT='06dee2116b09beb55bc2114dea49463ebcd1afe14150c6fe09c5228c8671dc34'
+SIGNING_FINGERPRINT=(A/'edison-signing-cert.sha256').read_text(encoding='utf8').strip()
 
 def copy(source,destination):
  destination.parent.mkdir(parents=True,exist_ok=True)
@@ -173,14 +172,14 @@ def sync():
  (WEB/'build.json').write_text(json.dumps(dict(version=(ROOT/'VERSION').read_text().strip(),built=time.strftime('%Y-%m-%d %H:%M'),campaignHash=digest,webEngine='ocgcore-wasm 0.1.2',androidEngine='ocgcore-wasm 0.1.2',cards=len(game.CARDS),tokens=len(ids)-len(game.CARDS))))
  print('Synchronized campaign,',len(ids),'card/token images and desktop UI assets.',flush=True)
 
-def build():
+def build(signing_password):
  sdk_root=os.environ.get('ANDROID_HOME') or os.environ.get('ANDROID_SDK_ROOT')
  if not sdk_root or not os.environ.get('JAVA_HOME'):
   raise RuntimeError('Set ANDROID_HOME and JAVA_HOME to the Android SDK and JDK 17.')
  sdk=Path(sdk_root);jdk=Path(os.environ['JAVA_HOME'])
  bt=sdk/'build-tools/35.0.0';platform=sdk/'platforms/android-35/android.jar'
  key_path=os.environ.get('EDISON_ANDROID_KEYSTORE')
- if not key_path or not os.environ.get('EDISON_ANDROID_KEYSTORE_PASSWORD'):
+ if not key_path or not signing_password:
   raise RuntimeError('Set the fork keystore path and password before signing.')
  key=Path(key_path).resolve()
  if not key.is_file() or ROOT in key.parents:
@@ -236,12 +235,13 @@ def build():
   run([zipalign,'-f','4',unsigned,aligned])
   run([zipalign,'-c','4',aligned])
  release=ROOT/'releases';release.mkdir(exist_ok=True)
- apk=Path(os.environ.get('ANDROID_APK_OUTPUT',str(release/APK_NAME))).resolve()
+ apk=Path(os.environ.get('ANDROID_APK_OUTPUT',str(release/f'Rogue-Duelist-Edison-v{version}.apk'))).resolve()
  apk.parent.mkdir(parents=True,exist_ok=True)
  sign=[jdk/'bin/java.exe','-jar',bt/'lib/apksigner.jar']
  candidate=apk.with_name(apk.stem+'.candidate.apk')
  try:
-  run(sign+['sign','--ks',key,'--ks-key-alias',SIGNING_ALIAS,'--ks-pass','env:EDISON_ANDROID_KEYSTORE_PASSWORD','--v4-signing-enabled','false','--out',candidate,aligned])
+  sign_env=dict(os.environ,EDISON_ANDROID_KEYSTORE_PASSWORD=signing_password)
+  run(sign+['sign','--ks',key,'--ks-key-alias',SIGNING_ALIAS,'--ks-pass','env:EDISON_ANDROID_KEYSTORE_PASSWORD','--v4-signing-enabled','false','--out',candidate,aligned],env=sign_env)
   verification=run(sign+['verify','--verbose','--print-certs',candidate],capture_output=True,text=True).stdout
   print(verification,flush=True)
   certificate=f'Signer #1 certificate SHA-256 digest: {SIGNING_FINGERPRINT}'
@@ -258,6 +258,7 @@ def build():
  print('APK:',apk,'-',round(apk.stat().st_size/1024/1024,1),'MiB',flush=True)
 
 if __name__=='__main__':
+ signing_password=os.environ.pop('EDISON_ANDROID_KEYSTORE_PASSWORD',None)
  sync()
  if '--sync-only' not in sys.argv:
-  build()
+  build(signing_password)
