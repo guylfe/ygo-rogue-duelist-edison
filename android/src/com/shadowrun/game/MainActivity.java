@@ -1,6 +1,7 @@
 package com.shadowrun.game;
 
 import android.app.Activity;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.webkit.*;
 import android.net.Uri;
@@ -13,6 +14,9 @@ import java.util.*;
 /** Offline game container. Only bundled HTTPS-origin assets can access save storage. */
 public final class MainActivity extends Activity {
     private WebView web;
+    private final EdisonUpdateClient startupUpdates = new EdisonUpdateClient();
+    private volatile EdisonRelease.Update startupUpdate;
+    private boolean startupUpdateHandled;
     private static final int SAVE_DECK_IMAGE = 4102;
     private byte[] pendingDeckImage;
     private static final int PICK_FILE = 4103;
@@ -38,7 +42,7 @@ public final class MainActivity extends Activity {
             }catch(IOException | SecurityException e){exportNotice("Could not save the image. Please try again.");}
         },"Deck-image-export").start();
     }
-    @Override protected void onDestroy(){synchronized(this){pendingDeckImage=null;}if(web!=null){web.removeJavascriptInterface("ShadowNative");web.stopLoading();web.destroy();web=null;}super.onDestroy();}
+    @Override protected void onDestroy(){dismissStartupUpdate();synchronized(this){pendingDeckImage=null;}if(web!=null){web.removeJavascriptInterface("ShadowNative");web.stopLoading();web.destroy();web=null;}super.onDestroy();}
 
     private static final String HOST = "appassets.androidplatform.net";
     private static boolean bundled(Uri uri) {
@@ -99,6 +103,30 @@ public final class MainActivity extends Activity {
             }
         });
         web.loadUrl("https://"+HOST+"/index.html");
+        if (state == null) checkStartupUpdate();
+    }
+
+    private void checkStartupUpdate() {
+        new Thread(() -> {
+            try {
+                EdisonRelease.Update update = startupUpdates.check(getPackageManager()
+                        .getPackageInfo(getPackageName(), PackageManager.GET_SIGNING_CERTIFICATES), true);
+                if (update == null) return;
+                runOnUiThread(() -> {
+                    if (startupUpdateHandled || isFinishing() || web == null) return;
+                    startupUpdate = update;
+                    web.evaluateJavascript("window.dispatchEvent(new Event('edison-update-available'))", null);
+                });
+            } catch (Exception ignored) {
+                // Startup works offline. Settings still offers a manual check and retry.
+            }
+        }, "Edison startup update").start();
+    }
+
+    private void dismissStartupUpdate() {
+        startupUpdateHandled = true;
+        startupUpdate = null;
+        startupUpdates.cancel();
     }
     private static byte[] png(String base64) {
         if(base64==null || base64.length()>16000000)return null;
@@ -201,7 +229,28 @@ public final class MainActivity extends Activity {
         }
 
         @JavascriptInterface public void openEdisonUpdate() {
-            runOnUiThread(() -> startActivity(new android.content.Intent(MainActivity.this, EdisonUpdateActivity.class)));
+            runOnUiThread(() -> {
+                dismissStartupUpdate();
+                startActivity(new android.content.Intent(MainActivity.this, EdisonUpdateActivity.class));
+            });
+        }
+
+        @JavascriptInterface public String getEdisonStartupUpdate() {
+            EdisonRelease.Update update = startupUpdate;
+            return update == null ? null : update.version;
+        }
+
+        @JavascriptInterface public void dismissEdisonStartupUpdate() {
+            runOnUiThread(MainActivity.this::dismissStartupUpdate);
+        }
+
+        @JavascriptInterface public void openEdisonStartupUpdate() {
+            runOnUiThread(() -> {
+                EdisonRelease.Update update = startupUpdate;
+                if (update == null || isFinishing()) return;
+                dismissStartupUpdate();
+                startActivity(EdisonUpdateActivity.downloadIntent(MainActivity.this, update));
+            });
         }
 
         private final AtomicFile file = new AtomicFile(new File(getFilesDir(), "campaign.json"));

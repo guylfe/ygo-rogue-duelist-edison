@@ -740,7 +740,19 @@ function summonedStats(live,seq){if((tagUI&&!engine?.aiModifiers)||typeof engine
 
 let titleMotion=null;
 
-function render(){if(screen!=='shop'&&(shopkeeperSmall||shopkeeperShrinking)){cancelShopkeeperShrink();shopkeeperSmall=false;resetShopkeeperRightClicks()}syncBackgroundAnimations();if(screen!=='duel')clearDuelDOM(app);if(screen!=='ending')clearShadowVictory();titleMotion?.destroy();titleMotion=null;if(screen==='tag'){tagUI?.render();return}removeActions();if(screen!=='duel')clearTimeout(aiTimer);({title:renderTitle,characters:renderCharacters,draft:renderDraft,starter:renderActStarter,act_transition:renderActTransition,routes:renderRoutes,shop:renderShop,achievements:renderAchievements,relics:renderRelics,settings:renderSettings,cosmetics:renderCosmetics,tutorial:renderTutorial,collection:renderCollection,stats:renderStats,gallery:renderGallery,ending:renderEnding,duel:renderDuel})[screen]();renderActTools();track(screenMusic())}
+function render(){if(screen!=='shop'&&(shopkeeperSmall||shopkeeperShrinking)){cancelShopkeeperShrink();shopkeeperSmall=false;resetShopkeeperRightClicks()}syncBackgroundAnimations();if(screen!=='duel')clearDuelDOM(app);if(screen!=='ending')clearShadowVictory();titleMotion?.destroy();titleMotion=null;if(screen==='tag'){tagUI?.render();return}removeActions();if(screen!=='duel')clearTimeout(aiTimer);({title:renderTitle,characters:renderCharacters,draft:renderDraft,starter:renderActStarter,act_transition:renderActTransition,routes:renderRoutes,shop:renderShop,achievements:renderAchievements,relics:renderRelics,settings:renderSettings,cosmetics:renderCosmetics,tutorial:renderTutorial,collection:renderCollection,stats:renderStats,gallery:renderGallery,ending:renderEnding,duel:renderDuel})[screen]();renderEdisonStartupUpdate();renderActTools();track(screenMusic())}
+
+let edisonStartupUpdateDismissed=false;
+function renderEdisonStartupUpdate(){
+ if(screen!=='title'||edisonStartupUpdateDismissed||app.querySelector('.edison-startup-update'))return;
+ const version=window.ShadowNative?.getEdisonStartupUpdate?.();
+ if(!version)return;
+ app.querySelector('.carousel')?.insertAdjacentHTML('afterend',`<aside class="edison-startup-update" aria-label="Edison update">
+  <span>Edison ${esc(version)} is available.</span>
+  ${btn('Update now','edison-startup-download','','primary')}${btn('Later','edison-startup-later')}
+ </aside>`);
+}
+window.addEventListener('edison-update-available',renderEdisonStartupUpdate);
 
 function go(name){if(name==='routes'&&state.run?.reward_slots?.pending){if(rewardDeckReturn)go(postDuelScreen());return;}if(rewardDeckReturn&&!['draft','shop','ending'].includes(name))rewardDeckReturn=false;if(name!=='duel'){clearTimeout(heldChainTimer);heldChainTimer=0;heldChainPointer=null;heldAlwaysChain=false;heldChainPrompt=null;}cancelCharacterEntrance();if(name!=='ending')clearShadowVictory();clearDuelEmotes();flushDraftTap();if(name!=='shop')keeperTalk.hush();if(name!=='shop'||screen!=='shop'){cancelShopkeeperShrink();shopkeeperSmall=false;resetShopkeeperRightClicks()}const pendingRewards=['shop','ending','act_transition'].includes(name)&&state.run?.reward_slots?.pending;if(pendingRewards)rewardMusic=true;if(name!==screen)previousScreen=screen;screen=name;syncBackgroundAnimations();render();if(name==='shop')settleViewport();if(['draft','shop'].includes(name)&&(state.run?.artifacts.includes('dna_rewrite')&&!state.run.monster_type||pendingRelicChoice(state.run))&&!modal.open)void offerGoldenCards();if(pendingRewards){if(rewardDeckReturn){rewardDeckReturn=false;if(modal.querySelector('.reward-screen')){modal.showModal();rewardPresentation?.refresh()}else showRewardSlots()}else showVictoryReceipt()}}
 
@@ -2705,6 +2717,16 @@ if(a==='defeated-collector-deck'){showDefeatedCollector(+el.dataset.index);retur
  }
 
  if(a==='edison-update'&&window.ShadowNative?.openEdisonUpdate){await persist();window.ShadowNative.openEdisonUpdate();return}
+ if(a==='edison-startup-download'||a==='edison-startup-later'){
+  if(edisonStartupUpdateDismissed||!window.ShadowNative?.getEdisonStartupUpdate?.())return;
+  if(a==='edison-startup-download')await persist();
+  if(edisonStartupUpdateDismissed)return;
+  edisonStartupUpdateDismissed=true;
+  app.querySelector('.edison-startup-update')?.remove();
+  if(a==='edison-startup-download')window.ShadowNative.openEdisonStartupUpdate();
+  else window.ShadowNative.dismissEdisonStartupUpdate();
+  return;
+ }
  if(a==='settings'){returnScreen=screen;go('settings');return}if(a==='settings-back'){go(returnScreen);if(screen==='duel')scheduleAI();return}
 
  if(a==='cheat'){const code=document.querySelector('#cheat-code').value;const result=await command('cheat',code);toast(result?.relic?`${result.relic} added to this run.`:result?.cleared?`${result.cleared} has beaten Challenge Level ${result.level}.`:code==='touchgrass'?'All characters cleared Challenge Levels -1 through 6.':code==='alteregos'?'All second variants unlocked.':code==='polymerization'?'All fused relics and their Fusion Materials are shown in Collection.':code==='sleevesforall'?'Every card sleeve can be chosen in Cosmetics. Achievements are unchanged.':'Testing unlock enabled.');return}

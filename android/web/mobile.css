@@ -2078,6 +2078,8 @@ button.navigation-icon-button>.navigation-icon{display:block;width:25px;height:2
 
 
 .title-version{position:absolute;left:max(10px,env(safe-area-inset-left));bottom:max(8px,env(safe-area-inset-bottom,0px));z-index:30;font-size:10px;line-height:1;color:#b4c5cd;opacity:.78;pointer-events:none}
+.edison-startup-update{z-index:3;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;width:max-content;max-width:94vw;flex-shrink:0;margin:0 auto 6px;padding:4px 6px 4px 10px;border:1px solid var(--border);border-radius:8px;background:var(--panel);text-align:center}
+.edison-startup-update button{min-height:40px;padding:5px 10px}
 
 .title .smooth-menu .menu-card[data-menu-duplicate]{visibility:visible!important}
 .title .smooth-menu .menu-card[data-distance="2"]{visibility:visible!important}

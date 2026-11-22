@@ -14,8 +14,11 @@ def finalize():
  java=Path(os.environ['JAVA_HOME'])/'bin/java.exe'
  attributes=subprocess.check_output([bt/'aapt.exe','dump','badging',p],encoding='utf8')
  package=re.search(r"^package: name='([^']+)' versionCode='(\d+)' versionName='([^']+)'",attributes,re.M)
+ min_sdk=re.search(r"^sdkVersion:'([1-9]\d*)'$",attributes,re.M)
  if not package or package[1]!='io.github.guylfe.rogueduelist.edison' or package[3]!=version:
   raise ValueError('APK has the wrong Edison package or version.')
+ if not min_sdk:
+  raise ValueError('APK is missing its minimum Android API level.')
  result=subprocess.check_output([java,'-jar',bt/'lib/apksigner.jar','verify','--min-sdk-version','29','--verbose','--print-certs',p],encoding='utf8')
  signer=re.search(r'^Signer #1 certificate SHA-256 digest: ([0-9a-f]{64})$',result,re.M)
  expected_signer=(ROOT/'android/edison-signing-cert.sha256').read_text(encoding='utf8').strip()
@@ -28,7 +31,7 @@ def finalize():
  p.with_suffix('.apk.sha256').write_text(digest+'  '+p.name+'\n')
  data={'version':version,'files':{p.name:{'version':version,'bytes':p.stat().st_size,'sha256':digest}}}
  (p.parent/'release-manifest.json').write_text(json.dumps(data,indent=2)+'\n')
- update={'version':version,'versionCode':int(package[2]),'package':package[1],
+ update={'version':version,'versionCode':int(package[2]),'package':package[1],'minSdk':int(min_sdk[1]),
          'signerSha256':signer[1],'bytes':p.stat().st_size,'sha256':digest}
  previous=int(os.environ.get('EDISON_ANDROID_PREVIOUS_CODE','0'))
  if not previous<update['versionCode']<=2100000000:

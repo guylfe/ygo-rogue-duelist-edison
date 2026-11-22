@@ -10,7 +10,7 @@ The Python campaign modules are copied into the APK and run offline with Pyodide
 
 ## Updating
 
-Rogue Duelist: Edison uses application ID `io.github.guylfe.rogueduelist.edison` and a separate Android save directory. Install v0.2.42 over your existing Edison installation to add in-game updates and keep your saves. For later releases, open **Settings → Devices &amp; App → Check for Edison updates**. Select Download update, then Install update, and confirm the normal Android prompt. The first in-game install may ask you to allow updates from this app.
+Rogue Duelist: Edison uses application ID `io.github.guylfe.rogueduelist.edison` and a separate Android save directory. Version 0.2.43 and later check for updates in the background at launch. When a compatible update is available, the main menu offers **Update now** to download it or **Later** to dismiss the prompt for this launch. You can also use **Settings → Devices &amp; App → Check for Edison updates** and choose **Download update**. After the download is verified, select **Install update** and confirm the normal Android prompt. The first in-game install may ask you to allow updates from this app. Installing over an existing Edison build keeps your saves.
 
 On Windows, set `JAVA_HOME` to JDK 17 and `ANDROID_HOME` to an SDK with Android 35 and Build Tools 35.0.0. Install Node and Python 3 with Pillow. Set `EDISON_ANDROID_KEYSTORE` to the existing private PKCS#12 key outside the checkout and provide its password through `EDISON_ANDROID_KEYSTORE_PASSWORD`. The build checks the signing certificate. Preserve the key and its password for future updates.
 
