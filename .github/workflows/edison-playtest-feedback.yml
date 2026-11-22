@@ -1,0 +1,24 @@
+name: Archive Edison playtest notes
+
+on:
+  issues:
+    types: [opened]
+
+permissions: {}
+
+jobs:
+  archive:
+    if: github.repository == 'guylfe/ygo-rogue-duelist-edison' && github.event.issue.user.id == 127800290 && github.event.sender.id == 127800290 && startsWith(github.event.issue.title, '[Edison playtest] ')
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Archive the validated report
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node .github/edison-playtest-feedback.mjs
