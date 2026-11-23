@@ -77,6 +77,8 @@ def build(root,out,templates,bundle_artwork=False):
  version=digest.hexdigest()[:16]
  if bundle_artwork:
   boot=out/'bundle-boot.js';boot.write_text(boot.read_text(encoding='utf8').replace('__BUNDLE_VERSION__',version),encoding='utf8')
+ if not bundle_artwork:
+  (out/'live-version.json').write_text(json.dumps(dict(version=(root/'VERSION').read_text(encoding='utf8').strip(),assetVersion=version)),encoding='utf8')
  sw=worker.read_text(encoding='utf8').replace('__VERSION__',json.dumps(version)).replace('__FILES__',json.dumps(files)).replace('__HASHES__',json.dumps(hashes,separators=(',',':'))).replace('__ARTWORK__',json.dumps(entries,separators=(',',':'))).replace('__PACKS__',json.dumps(packs))
  (out/'sw.js').write_text(sw,encoding='utf8')
  assert len(files)<(998 if bundle_artwork else 20000)

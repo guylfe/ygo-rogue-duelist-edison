@@ -261,6 +261,7 @@ public final class MainActivity extends Activity {
             String path = uri.getEncodedPath();
             String repo = "/guylfe/ygo-rogue-duelist-edison";
             if (!(repo + "/issues/new").equals(path) &&
+                    !(path != null && uri.getEncodedQuery() == null && path.matches(repo + "/issues/[1-9][0-9]*")) &&
                     !(path != null && path.matches(repo + "/blob/main/playtest-feedback/[0-9a-f-]{36}\\.md"))) return;
             runOnUiThread(() -> {
                 try { startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW, uri)); }

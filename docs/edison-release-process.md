@@ -10,3 +10,9 @@ Review the draft and its regression run. The review file lists the paths that ap
 2. Run `python -B tools/build_android.py` and `python -B tools/build_pwa.py --output releases/web-VERSION`. Confirm both menus show the intended version, then run `python -B tools/finalize_releases.py`. The finalizer checks the installed package ID and signer embedded in the APK and writes `edison-android-update.json`. If you choose a custom APK output folder, keep the file name `Rogue-Duelist-Edison-vVERSION.apk`.
 3. Push the tested fork source. Create a GitHub draft release tagged `edison-vVERSION` at that exact commit. Upload the APK, web ZIP and `edison-android-update.json`. Compare GitHub's recorded APK size and SHA-256 with the metadata. Publish as the latest stable release after the artifacts match.
 4. Read the fork’s latest release back. Confirm the release tag, source commit, canonical APK name, version code, package ID, minimum Android API level, signer, size and digest. The Android startup prompt and the manual check use this channel. Older release assets remain available for troubleshooting.
+
+## Hosted web and playtest feedback
+
+Publish the verified web build directory to the existing Edison Netlify site after validating the ZIP. The hosted site, builds distributed as ZIPs and the Android edition send playtest notes to the shared service. Keep the web site URL stable so the browser retains its IndexedDB saves. Use the existing export/import controls to move a save from a different origin. Verify live-version.json reports the new version and asset hash after each host deployment.
+
+The build keeps existing local notes and archive links. New reports use a one-time playtest code. The service runs the repository's Publish game feedback issues workflow to process queued notes. Verify the exact issue number from the service response before marking a report sent.

@@ -4,13 +4,63 @@ const folder='playtest-feedback';
 const storageKey='edison-playtest-drafts-v1';
 const idPattern=/^[\da-f]{8}-(?:[\da-f]{4}-){3}[\da-f]{12}$/;
 export const noteLimit=500;
+const endpoint='https://guylfe-game-feedback.netlify.app/v1/feedback';
+const codeKey='edison-playtest-code-v1';
+const codePattern=/^pt_[a-f0-9]{48}$/;
+const issueLink=number=>github+'/issues/'+number;
+
+function playtestId(){
+ if(crypto.randomUUID)return crypto.randomUUID();
+ const bytes=crypto.getRandomValues(new Uint8Array(16));
+ bytes[6]=(bytes[6]&15)|64;
+ bytes[8]=(bytes[8]&63)|128;
+ const hex=Array.from(bytes,byte=>byte.toString(16).padStart(2,'0')).join('');
+ return [hex.slice(0,8),hex.slice(8,12),hex.slice(12,16),hex.slice(16,20),hex.slice(20)].join('-');
+}
+
+export function getPlaytestCode(){
+ try{
+  const code=localStorage.getItem(codeKey)||'';
+  return codePattern.test(code)?code:'';
+ }catch{return ''}
+}
+
+export function savePlaytestCode(value){
+ const code=value.trim();
+ if(!codePattern.test(code))throw Error('Enter the playtest code you were given.');
+ localStorage.setItem(codeKey,code);
+}
+
+export function playtestReceipt(draft){
+ const number=draft.issueNumber;
+ return Number.isSafeInteger(number)&&number>0?issueLink(number):null;
+}
+
+export async function postPlaytest(draft,code,version){
+ const details=Object.fromEntries(draft.details);
+ const response=await fetch(endpoint,{
+  method:'POST',credentials:'omit',redirect:'error',cache:'no-store',
+  headers:{'Content-Type':'application/json',Authorization:'Bearer '+code},
+  body:JSON.stringify({game:'edison',reportId:draft.id,build:draft.submittedBuild||details.Version||version,
+   note:cleanNote(draft.note),context:{details,recentEvents:draft.log}}),
+  signal:AbortSignal.timeout(8000)
+ });
+ if(response.status===202)return {pending:true};
+ if(response.status===401)return {needsCode:true};
+ if(response.status===409||response.status===400)return {rejected:true};
+ if(!response.ok)throw Error('Feedback service could not be reached.');
+ const receipt=await response.json();
+ if(receipt.issueUrl!==playtestReceipt(receipt)||!playtestReceipt(receipt))throw Error('Invalid feedback receipt.');
+ return receipt;
+}
+
 const unicode=text=>new TextDecoder().decode(new TextEncoder().encode(text));
 
 function line(value,limit=72){
  return unicode(String(value??'').replace(/[\u0000-\u001f\u007f]/g,' ').trim().slice(0,limit));
 }
 
-export function newPlaytestDraft(context,events,id=crypto.randomUUID()){
+export function newPlaytestDraft(context,events,id=playtestId()){
  const fields=['Version','Screen','Act','Character','Encounter','Opponent','Turn'];
  const details=fields.map(key=>[key,line(context[key])]).filter(([,value])=>value);
  // Cap the actual query cost of the newest events so a full Unicode note still fits the issue URL.
