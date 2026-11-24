@@ -37,6 +37,12 @@ def prepare(run, rng):
     return decks
 
 
+def player_eligible(run, cid):
+    pack = content.PACK_BY_ID.get(content.CHARACTERS[run['character']]['pack'], {})
+    exceptions = pack.get('goat_exceptions', {})
+    return acts.allows(run, cid) or any(cid in slot for slot in exceptions.values())
+
+
 assert digest(content.CHARACTERS[:98]) == 'e6007bd9bd06cc40d1433baf794c38d21b2cb6ba7dc8d98f802d4e99928e3ab4'
 assert digest(content.PLAYABLE_IDS[:36]) == '2beb586475543e995f2460c25ed4f356dea805a14785dd0239038665fa11a25f'
 assert digest(content.PACKS[:126]) == '1cf01f98a38ef644eb5a628f8439d31cce30f8f5339e178573c27bf3011467f1'
@@ -73,10 +79,11 @@ with tempfile.TemporaryDirectory() as tmp, patch.object(storage,'ROOT',Path(tmp)
         if run['stage']=='starter':acts.choose_starter(run,next(iter(run['starter_offer'])))
         game.auto_deck(run)
         decks=prepare(run,rng)
-        assert all(acts.allows(run,cid) for cards in decks.values() for cid in cards), i
+        assert all((acts.allows(run,cid) if player else player_eligible(run,cid))
+                   for (player,_),cards in decks.items() for cid in cards), i
         assert 20<=len(decks[0,'DECK'])<=60 and len(decks[0,'EXTRA'])<=15, i
         assert len(decks[1,'DECK'])>=20, i
-    print('PASS both sides of all 50 default opening duels contain only GOAT-eligible cards')
+    print('PASS all 50 opening duels use GOAT cards or a player’s curated personal-pack exceptions')
 
     signature=game.BY_NAME['Copycat']['id']
     assert acts.FIRST_ACT[signature]==2
@@ -134,7 +141,7 @@ with tempfile.TemporaryDirectory() as tmp, patch.object(storage,'ROOT',Path(tmp)
         assert run['pack_ids']==[pid]*3 and run['act']==1
         dispatch('act-starter', next(iter(run['starter_offer'])))
         dispatch('auto')
-        assert game.validate(run) is None and all(acts.allows(run,cid) for cid in run['pool'])
+        assert game.validate(run) is None and all(player_eligible(run,cid) for cid in run['pool'])
         assert duelist['support'] in run['pack_rotations'][str(home)]
         draft_offer=acts.transition_offer(dict(run,act=home-1),rng)
         assert pid in draft_offer['choices'] and duelist['support'] in draft_offer['choices']

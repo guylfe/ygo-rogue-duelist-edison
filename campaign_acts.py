@@ -37,12 +37,20 @@ def pack_act(pid):
     return next((i for i, act in enumerate(ACTS, 1) if pack['date'] <= act['cutoff']), None)
 
 
-def edition(run, pack):
+def edition(run, pack, *, personal=False):
     """Project every slot and rarity of a pack into the current act."""
     if not active(run):
         return pack
+    exceptions = {}
+    if personal and pack.get('goat_exceptions') and run.get('history_mode') != 'tag':
+        from content import EDISON_DUELISTS
+        duelist = EDISON_DUELISTS.get(run.get('character'), {})
+        if duelist.get('pack') == pack['id']:
+            exceptions = pack['goat_exceptions']
     if pack.get('goat_slots') and era(run) < pack['home_act']:
         goat = pack['goat_slots']
+        if exceptions:
+            goat = {key: goat[key] + exceptions[key] for key in ('common', 'rare')}
         rarities = {str(cid): [label] for key, label in (('common','Common'),('rare','Rare')) for cid in goat[key]}
         slots = goat
         if era(run) > 1:
@@ -53,7 +61,8 @@ def edition(run, pack):
         pack = dict(pack, **slots, rare_display=slots['rare'], rarities=rarities)
     from campaign import card_identity, normal_starter
     card_fields = ('common', 'rare', 'starter_support', 'rare_display')
-    result = dict(pack, **{k: [cid for cid in pack[k] if allows(run, cid)] for k in card_fields if k in pack})
+    early = set(exceptions.get('common', []) + exceptions.get('rare', []))
+    result = dict(pack, **{k: [cid for cid in pack[k] if cid in early or allows(run, cid)] for k in card_fields if k in pack})
     ids = result['common'] + result['rare'] + result.get('starter_support', [])
     result['rarities'] = {str(cid): pack.get('rarities', {}).get(str(cid), []) for cid in ids}
     if not any(normal_starter(cid) for cid in ids):

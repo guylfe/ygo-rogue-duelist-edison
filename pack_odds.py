@@ -26,10 +26,10 @@ def group_odds(groups):
   states=next_states
  return tuple(sum(p*used[i] for (used,left),p in states.items())/g[0] for i,g in enumerate(groups))
 
-def inspect_pack(pid,profile,run=None):
+def inspect_pack(pid,profile,run=None,*,personal=False):
  import campaign as g,content,unlocks,card_rarity
  from campaign_acts import edition
- p=edition(run,content.PACK_BY_ID[pid])
+ p=edition(run,content.PACK_BY_ID[pid],personal=personal)
  overrides=p.get('rarity_weights',{})
  def unique(ids):
   out={}

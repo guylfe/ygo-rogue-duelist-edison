@@ -196,10 +196,10 @@ def install(g):
   storage.archive_run(run)
   if run.get('stage')=='gameover':storage.clear_run(run['_save_slot'])
   else:storage.write(storage.run_path(run['_save_slot']),run)
- def open_pack(name,rng=random,run=None):
+ def open_pack(name,rng=random,run=None,*,personal=False):
   p=PACK_BY_ID.get(name) or next((p for p in PACKS if p['name']==name and p['region']=='EN'),None)
   if not p:raise ValueError('Unknown booster')
-  p=acts.edition(run,p)
+  p=acts.edition(run,p,personal=personal)
   # Expanded draft boosters: nine cards even for five-card OCG originals,
   # otherwise four packs cannot reliably make a legal 20-card draft.
   profile=storage.profile()
@@ -304,7 +304,7 @@ def install(g):
    choices=[p['id'] for p in PACKS if p['id'].startswith('DRAFT-') and not p.get('home_act') and pack_archetype_relics(p['id'])]
    one=rng.choice(choices);pack_ids=[one]*4;pack_relics=pack_archetype_relics(one)
   duelist=EDISON_DUELISTS.get(index)
-  era_run={'act':1} if act_campaign or duelist else None
+  era_run={'act':1,'character':index} if act_campaign or duelist else None
   normal_start=act_campaign and not any(char.get(k) for k in ('copycat','engine_deck','randomized'))
   if act_campaign:era_run['pack_rotations']=acts.draft_rotations(pack_ids if normal_start else [],rng,duelist)
   core_ids,starter_ids=acts.starter_list(era_run,pack_ids,rng) if normal_start else ([],[])
@@ -313,7 +313,7 @@ def install(g):
   # Copycat's Randomizer: its packs come from the run's own randomized cards, made once the run exists (below).
   if char.get('randomized'):random_cards.uninstall()
   for _ in range(0 if char.get('randomized') else 500):
-   packs=[open_pack(pack,rng,era_run) for pack in pack_ids]
+   packs=[open_pack(pack,rng,era_run,personal=normal_start) for pack in pack_ids]
    starter_offer={pid:open_pack(pid,rng,era_run) for pid in starter_ids}
    if normal_start:
     playable=all(sum(min(3,n) for n in Counter(g.card_identity(cid) for cid in signatures+sum(packs,[])+support if not g.is_extra(cid)).values())>=20 for support in starter_offer.values())
@@ -1061,7 +1061,7 @@ def install(g):
     run['stamped_singles']=run.get('stamped_singles',0)+1
     if run['stamped_singles']%max(1,amount(run,'single_stamp'))==0:obtained.append(rng.choice([c for c in g.CARDS if acts.allows(run,c['id']) and unlocks.card_allowed(c)])['id'])
   elif item['kind']=='pack':
-   obtained=random_cards.open_pack(run,rng) if item['id']==random_cards.RANDOM_PACK else open_pack(item['id'],rng,run)
+   obtained=random_cards.open_pack(run,rng) if item['id']==random_cards.RANDOM_PACK else open_pack(item['id'],rng,run,personal=True)
    if item['id']!=random_cards.RANDOM_PACK:acts.register_pack(run,item['id'])
   elif item['kind']=='deck':
    obtained=item['cards'][:]
