@@ -33,9 +33,9 @@ export const PACK_THEMES=[
  {name:'LP recovery',min:4,has:recovery,match:recovery},
 ];
 
-export function packSummaryParts(content,pid){
+export function packSummaryParts(content,pid,availableIds){
  const p=content.packs.find(p=>p.id===pid);if(!p)return null;
- const ids=new Set([...(p.common||[]),...(p.rare||[])]),cards=content.cards.filter(c=>ids.has(c.id)),counts={};
+ const ids=new Set(availableIds??[...(p.common||[]),...(p.rare||[])]),cards=content.cards.filter(c=>ids.has(c.id)),counts={};
  for(const c of cards)if(c.data.type&1)counts[c.race]=(counts[c.race]||0)+1;
  const types=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([name])=>name);
  const themes=PACK_THEMES.filter(x=>cards.filter(x.has).length>=x.min).map(x=>x.name);

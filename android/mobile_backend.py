@@ -53,7 +53,10 @@ def dispatch(raw):
  if action=='pack-inspect':
   from pack_odds import inspect_pack
   pid=value['id'] if isinstance(value,dict) else value
-  view=run if isinstance(value,dict) and value.get('campaign') else None
+  view=None
+  if isinstance(value,dict):
+   if value.get('starter'):view={'act':1}
+   elif value.get('campaign'):view=run
   if view and pid in (view.get('act_transition') or {}).get('choices',[]):view=dict(view,act=view['act_transition']['incoming'])
   return json.dumps(dict(result=inspect_pack(pid,storage.profile(),view)),ensure_ascii=False)
  if action.startswith('device-sync-'):

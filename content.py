@@ -66,10 +66,12 @@ for _id, _duelist in EDISON_DUELISTS.items():
  _common, _rare = ([_names[name] for name in _duelist[key]] for key in ('common','rare'))
  _starter = {key: [_names[name] for name in _duelist['goat_'+key]] for key in ('common','rare')}
  _enablers = [_names[name] for name in _duelist['enablers']]
+ _weights = {str(cid):3.0 for cid in _enablers} | {str(_names[_duelist['ace']]):4.0}
+ _weights.update({str(_names[name]):weight for name,weight in _duelist.get('pack_weights',{}).items()})
  _pack = dict(id=_pack_id,name=_duelist['name'],region='EN',image=_pack_id+'.jpg',draft_only=True,
               home_act=_duelist['home_act'],archetypes=_duelist['tags'],size=9,common=_common,rare=_rare,
               rare_display=_rare,rarities={str(cid):['Rare' if cid in _rare else 'Common'] for cid in _common+_rare},
-              goat_slots=_starter,rarity_weights={str(cid):3.0 for cid in _enablers} | {str(_names[_duelist['ace']]):4.0})
+              goat_slots=_starter,rarity_weights=_weights)
  PACKS.append(_pack)
  PACK_BY_ID[_pack_id] = _pack
  EDISON_DECKS[_id] = dict(main=[_names[name] for name,count in _duelist['main'].items() for _ in range(count)],
