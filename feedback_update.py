@@ -61,11 +61,16 @@ def opponent_relic(run):
  from collections import Counter
  # Use the opponent's actual deck, including opponents without playable variants.
  try:
-  from content import opponent_record
-  import endless
-  deck=endless.encore_record(run) if run.get('encore_active') else opponent_record(run.get('round',0),run['opponent'],run.get('loop',0))
-  races=Counter(g.BY_ID[c]['race'] for c in run.get('opponent_cards',deck['main']+deck.get('extra',[])) if c in g.BY_ID and g.BY_ID[c]['data']['type']&1)
- except (KeyError,IndexError,TypeError):races=Counter({CHARACTERS[run.get('opponent',0)].get('race','Spellcaster'):1})
+  cards=run.get('opponent_cards')
+  if cards is None:
+   from content import opponent_record
+   import endless
+   if run.get('encore_active'):deck=endless.encore_record(run)
+   elif run.get('act'):deck=g.run_opponent_record(run)
+   else:deck=opponent_record(run.get('round',0),run['opponent'],run.get('loop',0))
+   cards=deck['main']+deck.get('extra',[])
+  races=Counter(g.BY_ID[c]['race'] for c in cards if c in g.BY_ID and g.BY_ID[c]['data']['type']&1)
+ except (KeyError,IndexError,TypeError,ValueError):races=Counter({CHARACTERS[run.get('opponent',0)].get('race','Spellcaster'):1})
  mapping={'Warrior':'blade','Beast-Warrior':'blade','Spellcaster':'mage','Dragon':'dragon','Winged Beast':'wing','Machine':'gear','Aqua':'shell','Fish':'shell','Sea Serpent':'shell','Dinosaur':'fossil','Reptile':'fossil','Insect':'hive','Plant':'hive','Zombie':'bone','Fairy':'halo','Beast':'fang','Fiend':'horn','Pyro':'storm_core','Thunder':'storm_core','Divine-Beast':'divine_might'}
  return mapping.get(races.most_common(1)[0][0] if races else '', 'sword')
 

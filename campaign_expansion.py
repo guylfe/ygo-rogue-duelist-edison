@@ -48,6 +48,7 @@ DECK_NEEDS={'magicians_bond':lambda c:bool(c['data']['type']&1) and ('Dark Magic
  'blue_eyes_radiance':lambda c:c['name']=='Blue-Eyes White Dragon'}
 
 def shop_relic_eligible(run,key):
+ if run.get('cards_only'):return False
  character=CHARACTERS[run['character']]
  effect=ART_INFO[key]['effect']
  # Fused relics only come from fusing, and a fused set's pieces are not offered again.
@@ -78,6 +79,7 @@ PACK_ARCHETYPE_CARDS=2
 # shelves on every screen. Singles and relics stay as in solo play.
 TAG_EXTRA_PACKS=2
 def shop_pack_count(run):
+ if run.get('cards_only'):return 5
  return (4 if ar.has(run,'booster_shelf') else 3)+(TAG_EXTRA_PACKS if run.get('history_mode')=='tag' else 0)
 _pack_relics={}
 def pack_archetype_relics(pack_id):
@@ -304,12 +306,14 @@ def install(g):
   else:boss_preview.ensure_curses(run,rng,boss_curse_block)
   run['reward_rules']=5
   run['revealed_opponents']=[]
- def new_run(index,rng=random,level=0,variant=0,act_campaign=False):
+ def new_run(index,rng=random,level=0,variant=0,act_campaign=False,*,cards_only=False):
   level=challenge_levels.validate(index,level)
   reload_tuning()
   if index not in PLAYABLE_IDS or index not in storage.profile()['unlocked']:raise ValueError('This duelist is locked.')
   import character_variants
   char=character_variants.loadout(CHARACTERS,index,variant,storage.profile());signatures=[g.BY_NAME[n]['id'] for n in char['cards']]
+  if cards_only and (not act_campaign or any(char.get(k) for k in ('copycat','engine_deck','randomized'))):
+   raise ValueError('Choose a duelist who builds their deck from singles and boosters.')
   pack_ids=char.get('starting_packs') if variant and char.get('starting_packs') else starting_packs(index,rng)
   # Ryou Bakura's Fortune's Favorite (user, 2026-11-18): 4 copies of one random character's draft pack, and a starting
   # archetype relic for an archetype in that pack (pack_archetype_relics).
@@ -320,8 +324,13 @@ def install(g):
   duelist=EDISON_DUELISTS.get(index)
   era_run={'act':1,'character':index} if act_campaign or duelist else None
   normal_start=act_campaign and not any(char.get(k) for k in ('copycat','engine_deck','randomized'))
-  if act_campaign:era_run['pack_rotations']=acts.draft_rotations(pack_ids if normal_start else [],rng,duelist)
-  core_ids,starter_ids=acts.starter_list(era_run,pack_ids,rng) if normal_start else ([],[])
+  if act_campaign:
+   if cards_only:era_run['cards_only']=True
+   pack_seed=rng.getrandbits(64)
+   pack_rng=random.Random(pack_seed)
+   era_run['pack_seed']=f'{pack_seed:016x}'
+   era_run['pack_rotations']=acts.draft_rotations(pack_ids if normal_start else [],pack_rng,duelist,cards_only=cards_only)
+  core_ids,starter_ids=acts.starter_list(era_run,pack_ids,pack_rng) if normal_start else ([],[])
   if act_campaign:signatures=[cid for cid in signatures if acts.allows(era_run,cid)]
   if normal_start:pack_ids=core_ids
   # Copycat's Randomizer: its packs come from the run's own randomized cards, made once the run exists (below).
@@ -341,7 +350,7 @@ def install(g):
   r=dict(version=3,shop_rerolls=0,character=index,lp=8000,gold=40,round=0,stage='draft',pool=signatures+sum(packs,[]),selected=list(range(len(signatures))),guaranteed=signatures,packs=packs,artifacts=[],history=[],shop=[],duel=None,curses=[],boss_cursed=[],boss_rules=3,boss_curse=None,purchased=0)
   if act_campaign:
    r.update(era_run,carried_packs=[],opened_packs=[],offered_packs=[])
-   if normal_start:r.update(stage='starter',starter_offer=starter_offer)
+   if normal_start:r.update(stage='starter',starter_offer=starter_offer,starter_offer_order=starter_ids)
   r['new_cards_from']=0
   r.update(variant=variant,variant_name=char.get('alternate',{}).get('name') if variant else 'Standard',campaign_rules=4,started_at=time.time(),unlocks_earned=[],stats={},pack_ids=pack_ids)
   if char.get('copycat') or char.get('engine_deck'):r['selected']=[];r['guaranteed']=[];r['stage']='draft'
@@ -351,7 +360,7 @@ def install(g):
    r['packs']=[random_cards.open_pack(r,rng) for _ in pack_ids];r['pool']=sum(r['packs'],[]);r['selected']=[];r['guaranteed']=[]
   r['challenge_level']=level
   if level>=4:r['lp']=4000
-  relic='none' if level==-1 else char['starting_relic']
+  relic='none' if challenge_levels.player_relics_disabled(r) else char['starting_relic']
   cursed=cursed_relics.approved()
   if relic=='random':relic=archetype_relics.sample([k for k in ARTIFACTS if k not in RETIRED_ARTIFACTS and k not in cursed and k not in relic_fusions.KEYS and (k!='absolute_random' or random_cards.allowed(r))],1,r,rng)[0]
   elif relic=='random_archetype':relic=archetype_relics.sample([k for k in ARTIFACTS if k not in RETIRED_ARTIFACTS and k not in cursed and ART_INFO.get(k,{}).get('effect')=='archetype_stock'],1,r,rng)[0]
@@ -920,7 +929,7 @@ def install(g):
   # seeds both devices share (random_cards.tag_pack).
   # It takes the second booster slot only, never the guaranteed pack or the character pack in the last slot (user, 2026-11-16:
   # it replaced the character booster).
-  elif not fixed_deck(run) and not CHARACTERS[run['character']].get('engine_deck') and len(tied_ids)==1 and len(pack_ids)>=3 and random_cards.allowed(run) and rng.random()<random_cards.SHOP_CHANCE:
+  elif not run.get('cards_only') and not fixed_deck(run) and not CHARACTERS[run['character']].get('engine_deck') and len(tied_ids)==1 and len(pack_ids)>=3 and random_cards.allowed(run) and rng.random()<random_cards.SHOP_CHANCE:
    pack_ids[1]=random_cards.RANDOM_PACK
   if acts.active(run) and not randomized_shop:
    pack_ids=acts.distinct_shop_packs(pack_ids,len(tied_ids),pack_pool,rng)
@@ -932,7 +941,7 @@ def install(g):
   pre=json.loads((g.ROOT/'data/preconstructed.json').read_text(encoding='utf8'))
   chance=min(pre['max_chance'],pre['base_chance']+max(0,run.get('gold_leaving_shop',0))*pre['chance_per_gold'])
   decks=[d for d in pre['decks'] if all(acts.allows(run,cid) for cid in d['cards'])]
-  if decks and not copies_deck(run) and not CHARACTERS[run['character']].get('engine_deck') and rng.random()<chance:
+  if decks and not run.get('cards_only') and not copies_deck(run) and not CHARACTERS[run['character']].get('engine_deck') and rng.random()<chance:
    choice=rng.choice(decks)
    # A starter deck the player cannot pay for is not offered (Discord via the user, 2026-11-19: runs felt decided by
    # whether a deck showed up when it was affordable). The roll still happens, so no other odds or later draws move,
@@ -973,6 +982,7 @@ def install(g):
   count=max(0,int(run.get('shop_rerolls',0) or 0))
   return [10,20,40,60,100,150][count] if count<6 else 200+50*(count-6)
  def lock_relic(run,index):
+  if run.get('cards_only'):raise ValueError('Relics are disabled in this run.')
   """Toggle the lock on a relic in stock: locked relics survive rerolls and carry into the next shop (2026-11-13)."""
   if run.get('stage')!='shop':raise ValueError('Shop is closed.')
   shop=run.get('shop',[]);index=int(index)
@@ -998,6 +1008,7 @@ def install(g):
   else:run['shop_rerolls']=int(run.get('shop_rerolls',0) or 0)+1
   return price
  def sell_relic(run,key):
+  if run.get('cards_only'):raise ValueError('Relics are disabled in this run.')
   cursed_relics.require_choice(run)
   if run.get('stage')!='shop':raise ValueError('Relics can only be sold in the shop.')
   if key not in ARTIFACTS or key not in run.get('artifacts',[]):raise ValueError('You do not own that relic.')
@@ -1024,6 +1035,7 @@ def install(g):
   return missing or [c for c in cards if shop_rewards.matches(c,'exodia') and c['name'] not in archetype_relics.EXODIA]
  def acquire_relic(run,key,rng=random):
   """Add a relic and run its on-acquire effects; returns any cards it grants."""
+  if run.get('cards_only'):raise ValueError('Relics are disabled in this run.')
   import choice_relics
   _price_mod=lambda:max(0,1-amount(run,'discount')/100)*ar.price_mult(run)
   _pre_mod=_price_mod();obtained=[]
@@ -1058,6 +1070,7 @@ def install(g):
   cursed_relics.require_choice(run)
   if run['stage']!='shop':raise ValueError('Shop is closed.')
   item=run['shop'][index]
+  if run.get('cards_only') and item['kind'] not in ('single','pack'):raise ValueError('Only singles and boosters can be bought in this run.')
   if run.get('challenge_level')==-1 and item['kind']=='artifact':raise ValueError('Relics are disabled at LVL -1.')
   if copies_deck(run) and item['kind']!='artifact':raise ValueError('Copycat borrows the opponent deck and can only buy relics.')
   if CHARACTERS[run['character']].get('engine_deck') and item['kind']!='artifact':raise ValueError('The Dueling Engine uses reward decks and can only buy relics.')
@@ -1121,6 +1134,7 @@ def install(g):
   if not indices:return []
   if any(i<0 or i>=len(run['shop']) for i in indices):raise ValueError('Unknown shop item.')
   items=[run['shop'][i] for i in indices]
+  if run.get('cards_only') and any(x['kind'] not in ('single','pack') for x in items):raise ValueError('Only singles and boosters can be bought in this run.')
   import payment
   if not payment.can_pay(run,sum(x['price'] for x in items)):payment.pay(run,sum(x['price'] for x in items),'these items')
   if run['stage']!='shop' or any(x['sold'] for x in items):raise ValueError('Item unavailable.')

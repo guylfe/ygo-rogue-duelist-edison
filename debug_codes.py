@@ -53,6 +53,8 @@ def give_relic(run, wanted):
     import content, approved_relics as ar, relic_fusions
     if not run:
         raise ValueError('Start a run first.')
+    if run.get('cards_only'):
+        raise ValueError('Relics are disabled in this run.')
     wanted = str(wanted or '').strip()
     fold = wanted.casefold()
     key = wanted if wanted in content.ARTIFACTS else next((k for k, row in content.ARTIFACTS.items() if k.casefold() == fold or str(row[0]).casefold() == fold), None)

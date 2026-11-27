@@ -40,8 +40,9 @@ assert sampled[0] == acts.draft_rotations([], random.Random(0))
 for act, rules in enumerate(acts.ACTS, 1):
     native = set(acts.native_packs(act))
     lineups = [set(r[str(act)]) for r in sampled]
+    size = acts.CONFIG['opening_rotation_size' if act == 1 else 'rotation_size']
     assert len({frozenset(lineup) for lineup in lineups}) > 1
-    assert all(len(lineup) == acts.CONFIG['rotation_size'] < len(native) for lineup in lineups)
+    assert all(len(lineup) == size < len(native) for lineup in lineups)
     assert all(rules['featured_pack'] in lineup and lineup.intersection(rules['companion_packs']) for lineup in lineups)
     assert set.union(*lineups) == native
 
@@ -189,4 +190,4 @@ with tempfile.TemporaryDirectory() as folder, patch.object(storage,'ROOT',Path(f
             game.prepare_duel(fixed,rng)
         assert fixed['pool'][-27:]==fixed['act_pack_cards']
         assert all(i<len(fixed['pool'])-27 for i in fixed['selected'])
-print('PASS 80 seeds cover all native boosters with varied eight-pack lineups; 27 campaign victories cover shops, routes, both reloaded transitions, cards, legacy saves, and era gates')
+print('PASS 80 seeds cover all native boosters with varied lineups; 27 campaign victories cover shops, routes, both reloaded transitions, cards, legacy saves, and era gates')

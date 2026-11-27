@@ -28,6 +28,7 @@ def dispatch(raw):
  global run,tag_session
  req=json.loads(raw);action=req['action'];value=req.get('value');result=None
  if action in ('relic-pick','relic-pick-reroll','card-pick','name-change','weight-pick'):
+  if run and run.get('cards_only'):raise ValueError('Relics are disabled in this run.')
   import choice_relics
   {'relic-pick':lambda:choice_relics.choose_relic(run,str(value)),'relic-pick-reroll':lambda:choice_relics.reroll_relic(run),
    'card-pick':lambda:choice_relics.pick_card(run,value),'name-change':lambda:choice_relics.change_name(run,value),
@@ -123,7 +124,8 @@ def dispatch(raw):
   value=value if isinstance(value,dict) else {'character':int(value)}
   slot=int(value.get('slot',storage.active_slot()));storage.run_path(slot)
   if storage.read(storage.run_path(slot)) and not value.get('replace'):raise ValueError('Confirm before replacing this saved run.')
-  candidate=g.new_run(int(value['character']),level=int(value.get('level',0)),variant=int(value.get('variant',0)),act_campaign=True);candidate['_save_slot']=slot
+  candidate=g.new_run(int(value['character']),level=int(value.get('level',0)),variant=int(value.get('variant',0)),
+                      act_campaign=True,cards_only=value.get('cards_only') is True);candidate['_save_slot']=slot
   # The character's saved card marks (Character settings) start every new run.
   if storage.saved_marks(candidate['character']):candidate['card_marks']=storage.saved_marks(candidate['character'])
   g.save(candidate);storage.record_run_start(candidate);storage.select_slot(slot);run=candidate
@@ -133,7 +135,8 @@ def dispatch(raw):
   # only until the first duel of the run has ended.
   if not restartable(run):raise ValueError('The run can only be restarted before the end of its first duel.')
   slot=storage.active_slot()
-  candidate=g.new_run(int(run['character']),level=int(run.get('challenge_level',0)),variant=int(run.get('variant',0)),act_campaign=acts.active(run));candidate['_save_slot']=slot
+  candidate=g.new_run(int(run['character']),level=int(run.get('challenge_level',0)),variant=int(run.get('variant',0)),
+                      act_campaign=acts.active(run),cards_only=run.get('cards_only',False));candidate['_save_slot']=slot
   # The character's saved card marks (Character settings) start every new run.
   if storage.saved_marks(candidate['character']):candidate['card_marks']=storage.saved_marks(candidate['character'])
   g.save(candidate);storage.record_run_start(candidate);storage.select_slot(slot);run=candidate

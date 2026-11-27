@@ -150,6 +150,7 @@ def run_slots():
   if isinstance(run,dict) and run.get('stage')=='gameover':archive_run(run);clear_run(slot);run=None
   occupied=run_path(slot).exists() or run_path(slot).with_suffix('.bak').exists()
   summary={k:run.get(k) for k in ('character','round','loop','stage','lp','challenge_level','last_played_at')} if isinstance(run,dict) else None
+  if summary and run.get('cards_only'):summary['cards_only']=True
   slots.append(dict(slot=slot,run=summary,occupied=occupied and run is not None))
  return slots
 

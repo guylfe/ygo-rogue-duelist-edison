@@ -51,12 +51,20 @@ def active_modifiers(run):
  return rows
 
 
+def player_relics_disabled(run):
+ return run.get('challenge_level')==-1 or bool(run.get('cards_only'))
+
 def suppress(run):
- """Enforce the relicless difficulty at campaign boundaries, including old saves."""
- if run.get('challenge_level')!=-1:return run
- run.update(artifacts=[],cursed_artifacts=[],curses=[],boss_curse=None,route_curses={},mirror_copy=None,starting_relic='none')
+ """Remove disabled rewards while preserving the chosen challenge's curses."""
+ if not player_relics_disabled(run):return run
+ run.update(artifacts=[],cursed_artifacts=[],mirror_copy=None,starting_relic='none')
+ if run.get('challenge_level')==-1:run.update(curses=[],boss_curse=None,route_curses={})
  run.pop('cursed_offer',None)
- run['shop']=[x for x in run.get('shop',[]) if x.get('kind')!='artifact']
+ if run.get('cards_only'):
+  for key in ('relic_locks','relic_offer','relic_picks','card_picks','name_change_picks','weight_picks'):
+   run.pop(key,None)
+  run['shop']=[x for x in run.get('shop',[]) if x.get('kind') in ('single','pack')]
+ else:run['shop']=[x for x in run.get('shop',[]) if x.get('kind')!='artifact']
  return run
 
 

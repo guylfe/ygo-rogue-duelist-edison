@@ -1,9 +1,15 @@
 // Shop pointer gestures: selecting never purchases; scrolling cancels both actions.
-export function installShopGestures(root,{tap,hold,delay=500}){
+export function installShopGestures(root,options){
+ return installTapHoldGestures(root,{
+  ...options,
+  itemFor:target=>target?.closest?.('.relic-lock')?null:target?.closest?.('[data-shop-item]')||null,
+  key:item=>Number(item?.dataset.shopItem),
+ });
+}
+
+export function installTapHoldGestures(root,{tap,hold,itemFor,key,delay=500}){
  let gesture=null;
  const suppressedClicks=[];
- // The relic lock button (top-left of a relic's art) is its own control, never a tap on the item.
- const itemFor=target=>target?.closest?.('.relic-lock')?null:target?.closest?.('[data-shop-item]')||null;
  const cancel=()=>{if(gesture){clearTimeout(gesture.timer);gesture.cancelled=true}};
  const rememberClick=e=>{
   suppressedClicks.push({index:gesture.index,x:Number.isFinite(e.clientX)?e.clientX:gesture.x,y:Number.isFinite(e.clientY)?e.clientY:gesture.y,until:Date.now()+1500});
@@ -13,8 +19,7 @@ export function installShopGestures(root,{tap,hold,delay=500}){
   if(e.detail===0)return false;
   const now=Date.now();
   for(let i=suppressedClicks.length-1;i>=0;i--)if(suppressedClicks[i].until<now)suppressedClicks.splice(i,1);
-  const index=item?Number(item.dataset.shopItem):NaN;
-  const tokenIndex=suppressedClicks.findIndex(token=>(Number.isFinite(index)&&token.index===index)||(Number.isFinite(e.clientX)&&Number.isFinite(e.clientY)&&Math.hypot(e.clientX-token.x,e.clientY-token.y)<=24));
+  const tokenIndex=suppressedClicks.findIndex(token=>(item&&token.index===key(item))||(Number.isFinite(e.clientX)&&Number.isFinite(e.clientY)&&Math.hypot(e.clientX-token.x,e.clientY-token.y)<=24));
   if(tokenIndex<0)return false;
   suppressedClicks.splice(tokenIndex,1);
   e.preventDefault();e.stopImmediatePropagation();
@@ -24,7 +29,7 @@ export function installShopGestures(root,{tap,hold,delay=500}){
   cancel();gesture=null;
   const el=itemFor(e.target);
   if(!el||e.button!==0||e.isPrimary===false)return;
-  const g=gesture={id:e.pointerId,el,index:Number(el.dataset.shopItem),x:e.clientX,y:e.clientY,pointerType:e.pointerType,cancelled:false,held:false};
+  const g=gesture={id:e.pointerId,el,index:key(el),x:e.clientX,y:e.clientY,pointerType:e.pointerType,cancelled:false,held:false};
   g.timer=setTimeout(()=>{if(g!==gesture||g.cancelled||!el.isConnected)return;g.held=true;hold(g.index)},delay);
  },true);
  root.addEventListener('pointermove',e=>{const threshold=gesture?.pointerType==='touch'?18:10;if(gesture?.id===e.pointerId&&Math.hypot(e.clientX-gesture.x,e.clientY-gesture.y)>threshold)cancel()},{capture:true,passive:true});
@@ -34,7 +39,7 @@ export function installShopGestures(root,{tap,hold,delay=500}){
  root.addEventListener('pointerup',e=>{
   if(gesture?.id!==e.pointerId)return;
   const g=gesture;clearTimeout(g.timer);
-  const item=itemFor(e.target),sameItem=Number(item?.dataset.shopItem)===g.index;
+  const item=itemFor(e.target),sameItem=!!item&&key(item)===g.index;
   if(sameItem||g.held)rememberClick(e);
   if(!g.cancelled&&!g.held&&sameItem)tap(g.index);
   gesture=null;
@@ -45,8 +50,8 @@ export function installShopGestures(root,{tap,hold,delay=500}){
   if(!el)return;
   e.preventDefault();e.stopImmediatePropagation();
   const g=gesture;clearTimeout(g?.timer);gesture=null;
-  if(e.detail===0||!g||(!g.cancelled&&!g.held&&Number(el.dataset.shopItem)===g.index))tap(Number(el.dataset.shopItem));
+  if(e.detail===0||!g||(!g.cancelled&&!g.held&&key(el)===g.index))tap(key(el));
  },true);
- root.addEventListener('contextmenu',e=>{const el=itemFor(e.target);if(!el)return;e.preventDefault();if(e.button!==2||e.pointerType==='touch')return;cancel();gesture=null;hold(Number(el.dataset.shopItem))},true);
+ root.addEventListener('contextmenu',e=>{const el=itemFor(e.target);if(!el)return;e.preventDefault();if(e.button!==2||e.pointerType==='touch')return;cancel();gesture=null;hold(key(el))},true);
  root.addEventListener('dragstart',e=>{if(itemFor(e.target)){cancel();e.preventDefault()}},true);
 }

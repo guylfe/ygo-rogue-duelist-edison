@@ -3,6 +3,7 @@ from pathlib import Path
 import json,random
 import approved_relics as ar
 import archetype_relics
+from challenge_levels import player_relics_disabled
 from content import ARTIFACTS
 
 def approved():
@@ -12,7 +13,7 @@ def approved():
 def pending(run):return bool(run and run.get('cursed_offer'))
 
 def create_offer(run,rng=random):
- if run.get('challenge_level')==-1:run.pop('cursed_offer',None);return
+ if player_relics_disabled(run):run.pop('cursed_offer',None);return
  if pending(run):
   offer=run['cursed_offer']
   if all(ar.eligible(run,k) for k in offer['options']):return
@@ -36,6 +37,7 @@ def reroll(run,rng=random):
  offer['options']=archetype_relics.sample(eligible,count,run,rng);offer['rerolls_left']-=1
 
 def choose(run,key,rng=random):
+ if player_relics_disabled(run):raise ValueError('Relics are disabled in this run.')
  offer=run.get('cursed_offer')
  if not offer or key not in offer['options'] or key not in approved() or key not in ARTIFACTS:raise ValueError('Choose one of the offered shadow relics.')
  if key in run['artifacts']:raise ValueError('You already own that relic.')

@@ -131,7 +131,7 @@ def native_packs(act, starters=False):
             and (not starters or not edition({'act': act}, p).get('shop_only'))]
 
 
-def draft_rotations(preferred, rng, duelist=None):
+def draft_rotations(preferred, rng, duelist=None, *, cards_only=False):
     """Draw the three native shop lineups once, before any campaign offers."""
     rotations = {}
     starters = dict.fromkeys(preferred[:3])
@@ -148,7 +148,10 @@ def draft_rotations(preferred, rng, duelist=None):
             lineup.append(duelist['support'])
         if act == 1:
             lineup.extend(pid for pid in starters if pid in native and pid not in lineup)
-        limit = CONFIG['rotation_size']
+        if act == 1:
+            limit = CONFIG['opening_rotation_size'] + (3 if cards_only else 0)
+        else:
+            limit = CONFIG['rotation_size'] + (4 if cards_only else 0)
         lineup = lineup[:limit]
         remaining = [pid for pid in native if pid not in lineup]
         lineup.extend(rng.sample(remaining, min(len(remaining), limit - len(lineup))))
@@ -268,7 +271,7 @@ def record_shop_packs(run, stock):
 
 
 def starter_list(run, preferred, rng):
-    """Keep the first three workable signature packs and advertise a supporting choice."""
+    """Keep the first three workable signature packs and draw distinct supporting offers."""
     from content import PACK_BY_ID
     rotation = native_rotation(run, 1)
     fallback = [pid for pid in rotation if not edition(run, PACK_BY_ID[pid]).get('shop_only')]
@@ -280,7 +283,9 @@ def starter_list(run, preferred, rng):
             core.append(rng.choice(fallback))
     if not core:
         return [], []
-    options = rng.sample(fallback, min(len(fallback), CONFIG['starter_options']))
+    supporting = [pid for pid in fallback if pid not in core]
+    count = CONFIG['starter_options'] + (2 if run.get('cards_only') else 0)
+    options = rng.sample(supporting, min(len(supporting), count))
     return core, options
 
 
@@ -295,6 +300,7 @@ def choose_starter(run, pid):
     for opened in run['pack_ids']:
         register_pack(run, opened)
     run.pop('starter_offer')
+    run.pop('starter_offer_order', None)
     run['stage'] = 'draft'
 
 
@@ -314,7 +320,8 @@ def transition_offer(run, rng):
             choices.append(duelist['support'])
         choices.append(duelist['pack'])
     eligible = [pid for pid in packs if pid not in choices]
-    choices += rng.sample(eligible, min(len(eligible), CONFIG['transition_choices'] - len(choices)))
+    count = CONFIG['transition_choices'] + (2 if run.get('cards_only') else 0)
+    choices += rng.sample(eligible, min(len(eligible), count - len(choices)))
     return dict(incoming=incoming, choices=choices, carryable=carryable,
                 picks=CONFIG['transition_picks'], carry_limit=CONFIG['carry_limit'])
 

@@ -35,6 +35,7 @@
     }
   ],
   "rotation_size": 8,
+  "opening_rotation_size": 12,
   "carry_limit": 2,
   "transition_picks": 3,
   "transition_choices": 6,
