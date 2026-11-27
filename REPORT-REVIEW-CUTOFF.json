@@ -4,6 +4,6 @@
   "policy": "Review submissions strictly after this successful release cutoff. Refresh after every published update; older reports may reproduce approved fixes.",
   "previous": "2026-11-27T21:36:22Z",
   "release": "edison-v0.2.48",
-  "ucRosterUpdatedAt": "2026-11-21T03:09:37.884999+02:00",
+  "ucRosterUpdatedAt": "2026-11-21T01:09:37.884999+00:00",
   "note": "Set to the verified stable Edison publication time."
 }
