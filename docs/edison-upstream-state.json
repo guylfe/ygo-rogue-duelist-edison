@@ -1,13 +1,10 @@
 {
-  "lastIncorporatedTag": "v0.2.41",
-  "lastIncorporatedCommit": "9b8378d051e6a2e3c948a7b0c9a33ec58ff8069f",
-  "previousTag": "v0.2.40",
+  "lastIncorporatedTag": "v0.2.47",
+  "lastIncorporatedCommit": "7160223f4363d8d070f6cb73727f813e90a8d527",
+  "previousTag": "v0.2.41",
   "appliedPaths": [
-    "android/test_translated_search.mjs",
     "android/web/card-search.js",
-    "android/web/deck_policy.js",
     "android/web/i18n.js",
-    "tools/pwa/pwa-storage.js",
-    "tools/pwa/test_storage_quota.mjs"
+    "tools/pwa/pwa-storage.js"
   ]
 }
