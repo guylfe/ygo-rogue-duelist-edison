@@ -354,9 +354,10 @@ export function runCardName(r,content){
 }
 // One entry per duel of a loop from the run timeline, null where not reached. The card and the between-duel run progress
 // strip (run-progress.js) both draw from it. The loop defaults to the latest one recorded.
-export function runDuels(r,{content,assetURL=p=>p,loop,played}){
- const runLength=content.runLength||9,timeline=r.timeline||[],names=id=>content.characters[id]?.name||'Unknown duelist';
- loop??=Math.max(1,...timeline.map(x=>x.loop||1));const latest=timeline.filter(x=>(x.loop||1)===loop);
+export function runDuels(r,{content,assetURL=p=>p,loop,act,played}){
+ const runLength=content.campaignActs?.[act-1]?.duels||content.runLength||9;
+ const timeline=r.timeline||[],names=id=>content.characters[id]?.name||'Unknown duelist';
+ loop??=Math.max(1,...timeline.map(x=>x.loop||1));const latest=timeline.filter(x=>(x.loop||1)===loop&&(!act||(x.act||1)===act));
  // Runs that started before the timeline existed still show which duels were played.
  const duels=Array.from({length:runLength},(_,i)=>{const x=latest.find(x=>x.duel===i+1);return x?{name:names(x.opponent),sprite:content.characters[x.opponent]?.sprite?assetURL(`assets/${content.characters[x.opponent].sprite}`):null,won:!!x.won,lp:+x.lp_after_healing||0}:i<played?{missing:true}:null});
  return {runLength,loop,latest,duels}
@@ -364,8 +365,9 @@ export function runDuels(r,{content,assetURL=p=>p,loop,played}){
 
 // Everything the card shows, as plain data with image URLs; deps come from the client (mobile.js).
 export function runCardData(r,{content,character,card,cardImage,relicImage,assetURL=p=>p,finalChallengeName=()=>''}){
- const won=r.stage==='complete',level=r.challenge_level??0,runLength=content.runLength||9,names=id=>content.characters[id]?.name||'Unknown duelist';
- const played=won?runLength:Math.min(runLength,(r.round||0)+1),{loop,latest,duels}=runDuels(r,{content,assetURL,played});
+ const won=r.stage==='complete',level=r.challenge_level??0,names=id=>content.characters[id]?.name||'Unknown duelist';
+ const runLength=content.campaignActs?.[r.act-1]?.duels||content.runLength||9;
+ const played=won?runLength:Math.min(runLength,(r.round||0)+1),{loop,latest,duels}=runDuels(r,{content,assetURL,act:r.act,played});
  const lost=latest.find(x=>!x.won),lostDuel=lost?.duel||played;
  const counts=new Map();for(const id of r.artifacts||[])counts.set(id,(counts.get(id)||0)+1);
  // Boss rewards record their cursed picks; older runs only have the cursed_ prefix to go on.
@@ -379,7 +381,7 @@ export function runCardData(r,{content,character,card,cardImage,relicImage,asset
   :[['DAMAGE DEALT',s.damage_dealt],['ATTACKS',s.attacks_declared],['SUMMONS',s.monsters_summoned],['ACTIVATIONS',s.cards_activated],['BOSSES',s.bosses_defeated],['COINS LEFT',r.gold]]).map(([k,v])=>[k,count(v)]);
  const when=new Date((+r.finished_at||Date.now()/1000)*1000).toLocaleDateString(currentLocale()==='en-US'?'en-GB':currentLocale(),{day:'numeric',month:'short',year:'numeric'}),time=runTime(r);
  const variant=runCardVariant(r,level),d={won,variant,seed:Math.floor(+r.started_at||1),challengeLevel:level,name:character.name,portrait:assetURL(`assets/${character.sprite}`),victories:r.round||0,runLength,duels,relics,curses,stats,
-  recordTitle:mate!=null?`DUEL RECORD · ${tr(character.name).toLocaleUpperCase(currentLocale())}’S OPPONENTS`:loop>1?`DUEL RECORD · LOOP ${loop}`:'DUEL RECORD',footerLeft:time?`${when} · Run time ${time}`:when,footerRight:`YGO ROGUE DUELIST · v${replayVersion}`,
+  recordTitle:mate!=null?`DUEL RECORD · ${tr(character.name).toLocaleUpperCase(currentLocale())}’S OPPONENTS`:r.act?`DUEL RECORD · ACT ${r.act}`:loop>1?`DUEL RECORD · LOOP ${loop}`:'DUEL RECORD',footerLeft:time?`${when} · Run time ${time}`:when,footerRight:`YGO ROGUE DUELIST · v${replayVersion}`,
   textures:{backdrop:assetURL('assets/character-select-background.png'),stone:assetURL('assets/ui/run-card-stone.jpg'),cracks:assetURL('assets/ui/run-card-cracks.jpg')}};
  if(mate!=null){
   // Only this player's deck, shopping and opponents are saved on their device; the teammate is a character.
@@ -395,7 +397,7 @@ export function runCardData(r,{content,character,card,cardImage,relicImage,asset
   d.deck={main:deckOrder(ids.filter(id=>!extra(id)),card).map(cardImage),extra:deckOrder(ids.filter(extra),card).map(cardImage)};
   d.label=`${d.tag?`${d.name} and ${d.tag.name} won the Tag run`:`${d.name} won the run`} at Challenge Level ${level} with ${d.victories} of ${runLength} victories: ${d.title.toLowerCase()}.`
  }else{
-  d.eyebrow=`${d.tag?'TAG RUN':'RUN'} LOST · DUEL ${lostDuel} OF ${runLength}`;d.title='THE SHADOWS CLAIM THIS RUN';d.subtitle=`${d.tag?'Tag · ':''}Challenge LVL ${level}`;
+  d.eyebrow=`${d.tag?'TAG RUN':'RUN'} LOST · ${r.act?'ACT '+r.act+' · ':''}DUEL ${lostDuel} OF ${runLength}`;d.title='THE SHADOWS CLAIM THIS RUN';d.subtitle=`${d.tag?'Tag · ':''}Challenge LVL ${level}`;
   const killer=r.loss?.card?card(r.loss.card):null,text=String(r.loss?.text||'Your life points reached 0').replace(/\s+—\s+[\d,]+ damage$/,''),at=killer?text.lastIndexOf(killer.name):-1;
   // The lead stops before the card name, without the quote mark of 'Defeated by the effect of "Exodia…"'.
   d.outcome={lead:at>0?text.slice(0,at).replace(/["“]\s*$/,'').trim():text,cardName:at>0?killer.name:'',amount:r.loss?.damage>0?count(r.loss.damage):'',detail:lost?`Duel ${lost.duel} · ${names(lost.opponent)}`:`Duel ${lostDuel}`,card:killer?cardImage(killer.id):''};

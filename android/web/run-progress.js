@@ -7,8 +7,16 @@ import {curseDescription,curseIconFile} from './experience-ui.js';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 export function runProgress(r,{content}){
- const round=r.round||0,{duels}=runDuels(r,{content,loop:(r.loop||0)+1,played:round});
+ const round=r.round||0,{duels}=runDuels(r,{content,loop:(r.loop||0)+1,act:r.act,played:round});
  return duels.map((d,i)=>({n:i+1,boss:bossDuel(i+1),state:d?(d.won===false?'lost':'won'):i===round?'next':'ahead',name:d?.name||'',lp:d?.lp??null}));
+}
+export function actDuelLabel(r,content,{reward=false,includeName=false}={}){
+ if(!r?.act)return '';
+ const act=content.campaignActs?.[r.act-1];
+ const length=act?.duels||content.runLength||9;
+ const duel=Math.max(1,Math.min(length,(r.round||0)+(reward?0:1)));
+ const name=includeName&&act?.name?` · ${act.name}`:'';
+ return `Act ${r.act}${name} · Duel ${duel} / ${length}`;
 }
 const tip=x=>[`Duel ${x.n}`,x.name,{won:'Win',lost:'Loss',next:'Next duel'}[x.state],x.name&&x.lp!=null?`${x.lp.toLocaleString('en-US')} LP`:'',x.boss?'Boss':''].filter(Boolean).join(' · ');
 
@@ -16,7 +24,8 @@ export function runProgressMarkup(r,deps,{compact=false}={}){
  const list=runProgress(r,deps),wins=list.filter(x=>x.state==='won').length,at=list.findIndex(x=>x.state!=='won'),next=list[at]?.state==='next'?`, Duel ${at+1} next`:'';
  // With a dialog to open, the strip is the button for the next boss preview (bossPreview below).
  const preview=deps.dialog&&nextBoss(r)?` role="button" tabindex="0" data-boss-preview title="Next boss"`:` role="img"`;
- return `<div class="run-strip${compact?' compact':''}${preview.includes('button')?' has-boss-preview':''}"${preview} aria-label="Run progress: ${wins} of ${list.length} victories${next}"><span class="run-strip-label">VICTORIES</span><span class="run-strip-track" style="--n:${list.length};--done:${at<0?list.length-1:at}">${list.map(x=>`<i class="${x.state}${x.boss?' boss':''}" title="${esc(tip(x))}"></i>`).join('')}</span><b class="run-strip-count">${wins} / ${list.length}</b></div>`;
+ const label=r.act?`ACT ${r.act}`:'VICTORIES',progress=r.act?`Act ${r.act} progress`:'Run progress';
+ return `<div class="run-strip${compact?' compact':''}${r.act?' act-progress':''}${preview.includes('button')?' has-boss-preview':''}"${preview} aria-label="${progress}: ${wins} of ${list.length} victories${next}"><span class="run-strip-label">${label}</span><span class="run-strip-track" style="--n:${list.length};--done:${at<0?list.length-1:at}">${list.map(x=>`<i class="${x.state}${x.boss?' boss':''}" title="${esc(tip(x))}"></i>`).join('')}</span><b class="run-strip-count">${wins} / ${list.length}</b></div>`;
 }
 
 // Adds the strip to a rendered page: a band under the header on the opponent screen. The shop has no room for a band,

@@ -23,8 +23,8 @@ const grave = name => zone(1,L.GRAVE).includes(name);
 const back = name => zone(1,L.SZONE).includes(name);
 const ACTIVATE = I.SELECT_ACTIVATE;
 
-function start(states,seed) {
-  const lua = ['Debug.ReloadFieldBegin(DUEL_MODE_MR1,1)','Debug.SetPlayerInfo(0,8000,0,0)','Debug.SetPlayerInfo(1,8000,0,0)'];
+function start(states,seed,enemyLP) {
+  const lua = ['Debug.ReloadFieldBegin(DUEL_MODE_MR1,1)','Debug.SetPlayerInfo(0,8000,0,0)',`Debug.SetPlayerInfo(1,${enemyLP},0,0)`];
   for (let p=0;p<states.length;p++) {
     const state = states[p];
     const add = (l,name,i,pos) => {
@@ -36,10 +36,11 @@ function start(states,seed) {
       add('MZONE',name,i,pos);
     }
     for (const [i,name] of (state.back||[]).entries()) add('SZONE',name,i,'POS_FACEUP_ATTACK');
+    if(state.fieldSpell)add('SZONE',state.fieldSpell,5,'POS_FACEUP_ATTACK');
     for (const [location,values] of Object.entries({HAND:state.hand,GRAVE:state.grave,EXTRA:state.extra,DECK:state.deck||Array(10).fill('Battle Ox')}))
       for (const name of (values||[])) add(location,name,0,location==='GRAVE'?'POS_FACEUP_ATTACK':'POS_FACEDOWN_DEFENSE');
   }
-  duel.start([],[],8000,8000,0,seed,[],[],lua.concat('Debug.ReloadFieldEnd()').join('\n'),0);
+  duel.start([],[],8000,enemyLP,0,seed,[],[],lua.concat('Debug.ReloadFieldEnd()').join('\n'),0);
   duel.core.startDuel(duel.h);
   duel.advance();
 }
@@ -80,23 +81,59 @@ const tests = [
    () => field('Infernity Archfiend')],
 ];
 
+const later = JSON.parse(load('campaign-files')['data/later-act-opponents.json']);
+const returning = [
+  [2, 1, {field:['Horus the Black Flame Dragon LV6'],hand:['Level Up!'],deck:['Horus the Black Flame Dragon LV8',...Array(10).fill('Spear Dragon')]},
+   () => field('Horus the Black Flame Dragon LV8')],
+  [2, 3, {hand:['Harpie Queen',"Harpies' Hunting Ground"]},
+   () => field('Harpie Queen') && back("Harpies' Hunting Ground"),{}],
+  [2, 9, {field:['Zombie Master'],hand:['Regenerating Mummy'],grave:['Pyramid Turtle']},
+   () => field('Pyramid Turtle') || field('Regenerating Mummy')],
+  [2, 18, {field:['Levia-Dragon - Daedalus'],fieldSpell:'A Legendary Ocean'},
+   () => field('Levia-Dragon - Daedalus') && zone(0,L.MZONE).length===0,
+   {field:['Summoned Skull','Dark Elf','Luster Dragon']}],
+  [3, 9, {field:['Zombie Master','Plaguespreader Zombie'],extra:['Doomkaiser Dragon']},
+   () => field('Doomkaiser Dragon'),{field:['Summoned Skull'],grave:['Ryu Kokki']}],
+  [3, 10, {hand:['Doom Dozer'],grave:['Insect Knight','Howling Insect']},
+   () => field('Doom Dozer'),{field:['Summoned Skull']}],
+  [3, 14, {hand:['Bountiful Artemis','Dark Bribe']},
+   () => field('Bountiful Artemis') && back('Dark Bribe')],
+  [3, 18, {hand:['Deep Sea Diva'],deck:['Spined Gillman',...Array(10).fill('Mother Grizzly'),'Spined Gillman'],extra:['Ally of Justice Catastor']},
+   () => field('Ally of Justice Catastor'),{field:['Battle Ox']}],
+  [3, 98, {hand:['Miracle Fusion'],grave:['Elemental HERO Ocean','Snowman Eater'],extra:['Elemental HERO Absolute Zero']},
+   () => field('Elemental HERO Absolute Zero'),{field:['Battle Ox']}],
+  [3, 103, {field:['Krebons','Destiny HERO - Malicious'],extra:['Stardust Dragon']},
+   () => field('Stardust Dragon')],
+];
+const lines = [
+  ...tests.map(([name,own,done,other])=>{
+    const index=content.characters.findIndex(c=>c.name===name&&c.home_act);
+    return {name,own,done,other,deck:content.cpuWatchDecks[index][0],lp:8000};
+  }),
+  ...returning.map(([act,index,own,done,other])=>{
+    const row=later[act].returning[index];
+    return {name:`Act ${act} ${content.characters[index].name}`,own,done,other,lp:later[act].lp[0],
+      deck:{main:Object.keys(row.main).map(name=>ids.get(name)),extra:row.extra.map(name=>ids.get(name))}};
+  }),
+];
 let failures = 0;
-for (const [name,own,done,other={field:['Battle Ox']}] of tests) {
-  const character = content.characters.find(c => c.name===name && c.home_act);
-  assert.ok(character,name);
-  const activeDeck = content.cpuWatchDecks[content.characters.indexOf(character)][0];
-  for (const card of [...(own.field||[]).map(c=>Array.isArray(c)?c[0]:c),...(own.hand||[]),...(own.grave||[]),...(own.extra||[])]) {
-    assert.ok([...activeDeck.main,...activeDeck.extra].includes(ids.get(card)),`${name} uses ${card} in the campaign`);
+for (const {name,own,done,other={field:['Battle Ox']},deck,lp} of lines) {
+  for (const card of [
+    ...(own.field||[]).map(c=>Array.isArray(c)?c[0]:c), ...(own.hand||[]), ...(own.grave||[]),
+    ...(own.extra||[]), ...(own.fieldSpell?[own.fieldSpell]:[]),
+  ]) {
+    assert.ok([...deck.main,...deck.extra].includes(ids.get(card)),`${name} uses ${card} in the campaign`);
   }
   const actions = [];
   try {
-    start([other,own],3317);
+    start([other,own],3317,lp);
     for (let i=0;i<150&&!duel.finished&&duel.turn<5&&!done();i++) {
       const m = duel.pending;
       const r = m.player===1 ? duel.auto(m) : pass(m);
       if (m.player===1) {
         const c = m.type===M.SELECT_IDLECMD ? (r.action===ACTIVATE?m.activates:r.action===I.SELECT_SUMMON?m.summons:r.action===I.SELECT_SPECIAL_SUMMON?m.special_summons:[])[r.index] : m;
-        actions.push([duel.turn,m.type,r.action??r.yes??r.index??r.position,duel.name(c?.code||0)]);
+        actions.push([duel.turn,m.type,r.action??r.yes??r.index??r.position,duel.name(c?.code||0),
+          m.type===M.SELECT_CHAIN?m.selects.map(card=>duel.name(card.code)):null]);
       }
       duel.respond(r);
     }

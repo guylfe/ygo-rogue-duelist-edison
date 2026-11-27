@@ -1,7 +1,7 @@
 // Run progress strip between duels: the run card's VICTORIES row for the run in progress (run-progress.js).
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {runProgress,runProgressMarkup,nextBoss,bossPreviewMarkup,bossPreview} from './web/run-progress.js';
+import {actDuelLabel,runProgress,runProgressMarkup,nextBoss,bossPreviewMarkup,bossPreview} from './web/run-progress.js';
 import {runCardData,runDuels,bossDuel} from './web/run-card.js';
 
 const content=JSON.parse(fs.readFileSync(new URL('./web/content.json',import.meta.url),'utf8'));
@@ -46,6 +46,30 @@ const done={round:9,timeline:Array.from({length:9},(_,i)=>duel(i+1,9))};
 assert.equal(states(done),'won won won won won won won won won');
 assert.match(runProgressMarkup(done,deps),/aria-label="Run progress: 9 of 9 victories"/);
 assert.match(runProgressMarkup(done,deps),/--done:8"/);
+
+// JSON round trips mimic reloading the saved history around both Act boundaries.
+let prior=done.timeline.map(row=>({...row,act:1}));
+for(const act of [2,3]){
+ const outgoing=JSON.parse(JSON.stringify({act:act-1,round:9,timeline:prior,stage:'act_transition'}));
+ assert.equal(actDuelLabel(outgoing,content,{reward:true}),`Act ${act-1} · Duel 9 / 9`);
+ assert.match(runProgressMarkup(outgoing,deps),new RegExp(`Act ${act-1} progress: 9 of 9 victories`));
+ const incoming=JSON.parse(JSON.stringify({act,round:0,timeline:prior,stage:'shop'}));
+ assert.equal(states(incoming),'next ahead ahead ahead ahead ahead ahead ahead ahead');
+ assert.equal(actDuelLabel(incoming,content),`Act ${act} · Duel 1 / 9`);
+ const first=JSON.parse(JSON.stringify({...incoming,round:1,timeline:[...prior,{...duel(1,98),act}]}));
+ assert.equal(runProgress(first,deps)[0].name,name(98));
+ assert.equal(states(first),'won next ahead ahead ahead ahead ahead ahead ahead');
+ assert.equal(actDuelLabel(first,content),`Act ${act} · Duel 2 / 9`);
+ assert.equal(actDuelLabel(first,content,{reward:true}),`Act ${act} · Duel 1 / 9`);
+ const loss={...first,stage:'gameover',timeline:[...first.timeline,{...duel(2,100,false,0),act}]};
+ const data=runCardData(loss,{...deps,character:content.characters[0],card:()=>null,cardImage:x=>x,relicImage:x=>x});
+ assert.equal(data.duels[1].won,false);
+ assert.match(data.eyebrow,new RegExp(`ACT ${act} · DUEL 2 OF 9`));
+ prior=[...prior,...done.timeline.map(row=>({...row,act}))];
+}
+const shortAct={...content,campaignActs:content.campaignActs.map((act,i)=>i===1?{...act,duels:6}:act)};
+assert.equal(runProgress({act:2,round:0},{content:shortAct}).length,6);
+assert.equal(actDuelLabel({act:2,round:0},shortAct),'Act 2 · Duel 1 / 6');
 
 // One source for both: the run card's duels are runDuels() for the latest loop.
 const card=runCardData({...mid,stage:'gameover',character:35,round:4,timeline:[...mid.timeline,duel(5,41,false,0)]},{...deps,character:content.characters[35],card:()=>null,cardImage:x=>x,relicImage:x=>x});

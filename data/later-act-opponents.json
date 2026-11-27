@@ -1,0 +1,421 @@
+{
+  "2": {
+    "lp": [
+      6500,
+      7000,
+      8500,
+      7500,
+      8000,
+      9500,
+      8500,
+      9000,
+      10500
+    ],
+    "home": [
+      98,
+      99,
+      100,
+      101,
+      102,
+      103,
+      104,
+      105
+    ],
+    "returning": {
+      "1": {
+        "theme": "Horus and Blue-Eyes",
+        "preview": [
+          "Horus the Black Flame Dragon LV8",
+          "Horus the Black Flame Dragon LV6",
+          "Kaibaman",
+          "Blue-Eyes White Dragon"
+        ],
+        "main": {
+          "Masked Dragon": 3,
+          "Twin-Headed Behemoth": 3,
+          "Spear Dragon": 3,
+          "Luster Dragon": 2,
+          "Mirage Dragon": 2,
+          "Horus the Black Flame Dragon LV4": 3,
+          "Horus the Black Flame Dragon LV6": 2,
+          "Horus the Black Flame Dragon LV8": 1,
+          "Blue-Eyes White Dragon": 2,
+          "Kaibaman": 2,
+          "Lord of D.": 2,
+          "Level Up!": 2,
+          "Stamping Destruction": 2,
+          "The Flute of Summoning Dragon": 2,
+          "Dragon's Mirror": 1,
+          "Heavy Storm": 1,
+          "Mystical Space Typhoon": 1,
+          "Book of Moon": 1,
+          "Enemy Controller": 1,
+          "Mirror Force": 1,
+          "Bottomless Trap Hole": 2,
+          "Sakuretsu Armor": 1
+        },
+        "extra": [
+          "Five-Headed Dragon"
+        ]
+      },
+      "3": {
+        "theme": "Harpie hunting party",
+        "preview": [
+          "Harpies' Hunting Ground",
+          "Harpie Queen",
+          "Harpie Lady Sisters",
+          "Hysteric Party"
+        ],
+        "main": {
+          "Harpie Queen": 3,
+          "Harpie Lady 1": 2,
+          "Cyber Harpie Lady": 1,
+          "Harpie Lady Sisters": 3,
+          "Flying Kamakiri #1": 3,
+          "Slate Warrior": 3,
+          "Spear Dragon": 2,
+          "Birdface": 2,
+          "Silpheed": 1,
+          "Harpies' Hunting Ground": 3,
+          "Elegant Egotist": 3,
+          "Triangle Ecstasy Spark": 2,
+          "Hysteric Party": 2,
+          "Heavy Storm": 1,
+          "Mystical Space Typhoon": 1,
+          "Enemy Controller": 2,
+          "Book of Moon": 1,
+          "Mirror Force": 1,
+          "Sakuretsu Armor": 2,
+          "Icarus Attack": 2
+        },
+        "extra": []
+      },
+      "9": {
+        "theme": "Il Blud and Zombie revival",
+        "preview": [
+          "Zombie Master",
+          "Pyramid Turtle",
+          "Il Blud",
+          "Book of Life"
+        ],
+        "main": {
+          "Pyramid Turtle": 3,
+          "Zombie Master": 3,
+          "Il Blud": 2,
+          "Ryu Kokki": 2,
+          "Vampire Lord": 2,
+          "Goblin Zombie": 3,
+          "Spirit Reaper": 2,
+          "Des Lacooda": 2,
+          "Regenerating Mummy": 2,
+          "Book of Life": 3,
+          "Card of Safe Return": 2,
+          "Foolish Burial": 2,
+          "Call of the Mummy": 1,
+          "Heavy Storm": 1,
+          "Mystical Space Typhoon": 1,
+          "Book of Moon": 2,
+          "Smashing Ground": 2,
+          "Mirror Force": 1,
+          "Torrential Tribute": 1,
+          "Bottomless Trap Hole": 2,
+          "Dust Tornado": 1
+        },
+        "extra": []
+      },
+      "18": {
+        "theme": "Umi and the ocean leviathans",
+        "preview": [
+          "Ocean Dragon Lord - Neo-Daedalus",
+          "Levia-Dragon - Daedalus",
+          "Warrior of Atlantis",
+          "A Legendary Ocean"
+        ],
+        "main": {
+          "Warrior of Atlantis": 3,
+          "Mother Grizzly": 3,
+          "Amphibious Bugroth MK-3": 3,
+          "Abyss Soldier": 2,
+          "Levia-Dragon - Daedalus": 2,
+          "Ocean Dragon Lord - Neo-Daedalus": 1,
+          "Mermaid Knight": 2,
+          "Gagagigo": 2,
+          "Giga Gagagigo": 2,
+          "Fenrir": 2,
+          "A Legendary Ocean": 3,
+          "Salvage": 2,
+          "Big Wave Small Wave": 2,
+          "Heavy Storm": 1,
+          "Mystical Space Typhoon": 1,
+          "Enemy Controller": 2,
+          "Book of Moon": 1,
+          "Mirror Force": 1,
+          "Tornado Wall": 2,
+          "Bottomless Trap Hole": 2,
+          "Sakuretsu Armor": 1
+        },
+        "extra": []
+      }
+    }
+  },
+  "3": {
+    "lp": [
+      8500,
+      9000,
+      10500,
+      9500,
+      10000,
+      11500,
+      10500,
+      11000,
+      12500
+    ],
+    "home": [
+      106,
+      107,
+      108,
+      109,
+      110,
+      111
+    ],
+    "returning": {
+      "9": {
+        "theme": "Zombie Synchro",
+        "preview": [
+          "Doomkaiser Dragon",
+          "Plaguespreader Zombie",
+          "Zombie Master",
+          "Mezuki"
+        ],
+        "main": {
+          "Pyramid Turtle": 3,
+          "Zombie Master": 3,
+          "Plaguespreader Zombie": 1,
+          "Goblin Zombie": 2,
+          "Mezuki": 2,
+          "Krebons": 2,
+          "Spirit Reaper": 2,
+          "Ryu Kokki": 2,
+          "Gorz the Emissary of Darkness": 1,
+          "Dark Armed Dragon": 1,
+          "Book of Life": 2,
+          "Foolish Burial": 1,
+          "Emergency Teleport": 1,
+          "Burial from a Different Dimension": 1,
+          "Book of Moon": 2,
+          "Heavy Storm": 1,
+          "Mystical Space Typhoon": 1,
+          "Smashing Ground": 2,
+          "Brain Control": 1,
+          "Mirror Force": 1,
+          "Torrential Tribute": 1,
+          "Bottomless Trap Hole": 2,
+          "Dimensional Prison": 2,
+          "Dust Tornado": 2,
+          "Call of the Haunted": 1
+        },
+        "extra": [
+          "Doomkaiser Dragon",
+          "Revived King Ha Des",
+          "Brionac, Dragon of the Ice Barrier",
+          "Goyo Guardian",
+          "Stardust Dragon",
+          "Ally of Justice Catastor"
+        ]
+      },
+      "10": {
+        "theme": "Doom Dozer and Insect pressure",
+        "preview": [
+          "Doom Dozer",
+          "Aztekipede, the Worm Warrior",
+          "Cross-Sword Beetle",
+          "Howling Insect"
+        ],
+        "main": {
+          "Doom Dozer": 2,
+          "Howling Insect": 3,
+          "Flying Kamakiri #1": 3,
+          "Insect Knight": 3,
+          "Pinch Hopper": 3,
+          "Aztekipede, the Worm Warrior": 2,
+          "Gokipon": 2,
+          "Chainsaw Insect": 2,
+          "Cross-Sword Beetle": 2,
+          "Nova Summoner": 2,
+          "Insect Imitation": 2,
+          "Book of Moon": 2,
+          "Smashing Ground": 2,
+          "Heavy Storm": 1,
+          "Mystical Space Typhoon": 1,
+          "Mirror Force": 1,
+          "Torrential Tribute": 1,
+          "Bottomless Trap Hole": 2,
+          "Dimensional Prison": 2,
+          "Dust Tornado": 2
+        },
+        "extra": []
+      },
+      "14": {
+        "theme": "Counter Fairies and Valhalla",
+        "preview": [
+          "Voltanis the Adjudicator",
+          "Bountiful Artemis",
+          "Van'Dalgyon the Dark Dragon Lord",
+          "Athena"
+        ],
+        "main": {
+          "Bountiful Artemis": 3,
+          "Meltiel, Sage of the Sky": 3,
+          "Harvest Angel of Wisdom": 3,
+          "Gellenduo": 2,
+          "Honest": 2,
+          "Zeradias, Herald of Heaven": 1,
+          "Voltanis the Adjudicator": 2,
+          "Van'Dalgyon the Dark Dragon Lord": 1,
+          "Athena": 1,
+          "Hecatrice": 1,
+          "The Sanctuary in the Sky": 2,
+          "Book of Moon": 2,
+          "Heavy Storm": 1,
+          "Mystical Space Typhoon": 1,
+          "Divine Wrath": 3,
+          "Dark Bribe": 2,
+          "Magic Drain": 2,
+          "Solemn Judgment": 1,
+          "Mirror Force": 1,
+          "Torrential Tribute": 1,
+          "Bottomless Trap Hole": 2,
+          "Dimensional Prison": 2,
+          "Valhalla, Hall of the Fallen": 1
+        },
+        "extra": []
+      },
+      "18": {
+        "theme": "WATER Synchro",
+        "preview": [
+          "Brionac, Dragon of the Ice Barrier",
+          "Deep Sea Diva",
+          "Spined Gillman",
+          "Snowman Eater"
+        ],
+        "main": {
+          "Mother Grizzly": 3,
+          "Deep Sea Diva": 3,
+          "Spined Gillman": 2,
+          "Abyss Soldier": 2,
+          "Snowman Eater": 2,
+          "Warrior of Atlantis": 2,
+          "Giga Gagagigo": 2,
+          "Levia-Dragon - Daedalus": 2,
+          "Gorz the Emissary of Darkness": 1,
+          "A Legendary Ocean": 2,
+          "Salvage": 2,
+          "Book of Moon": 2,
+          "Enemy Controller": 2,
+          "Smashing Ground": 2,
+          "Heavy Storm": 1,
+          "Mystical Space Typhoon": 1,
+          "Brain Control": 1,
+          "Mirror Force": 1,
+          "Torrential Tribute": 1,
+          "Bottomless Trap Hole": 2,
+          "Dimensional Prison": 2,
+          "Dust Tornado": 2
+        },
+        "extra": [
+          "Brionac, Dragon of the Ice Barrier",
+          "Ally of Justice Catastor",
+          "Black Rose Dragon",
+          "Stardust Dragon",
+          "Armory Arm"
+        ]
+      },
+      "98": {
+        "theme": "HERO Fusion with Absolute Zero",
+        "preview": [
+          "Elemental HERO Absolute Zero",
+          "Miracle Fusion",
+          "Elemental HERO Ocean",
+          "Elemental HERO Stratos"
+        ],
+        "main": {
+          "Elemental HERO Stratos": 1,
+          "Elemental HERO Ocean": 3,
+          "Elemental HERO Woodsman": 2,
+          "Elemental HERO Neos Alius": 3,
+          "Elemental HERO Avian": 2,
+          "Elemental HERO Burstinatrix": 2,
+          "Elemental HERO Sparkman": 2,
+          "King of the Swamp": 2,
+          "Snowman Eater": 2,
+          "Neo-Spacian Grand Mole": 1,
+          "Miracle Fusion": 3,
+          "Polymerization": 3,
+          "E - Emergency Call": 2,
+          "Reinforcement of the Army": 1,
+          "Heavy Storm": 1,
+          "Mystical Space Typhoon": 1,
+          "Book of Moon": 2,
+          "Brain Control": 1,
+          "Mirror Force": 1,
+          "Torrential Tribute": 1,
+          "Bottomless Trap Hole": 2,
+          "Dimensional Prison": 2
+        },
+        "extra": [
+          "Elemental HERO Absolute Zero",
+          "Elemental HERO Absolute Zero",
+          "Elemental HERO Flame Wingman",
+          "Elemental HERO Shining Flare Wingman",
+          "Elemental HERO Thunder Giant",
+          "Elemental HERO Gaia"
+        ]
+      },
+      "103": {
+        "theme": "Destiny HERO Synchro",
+        "preview": [
+          "Stardust Dragon",
+          "Destiny HERO - Malicious",
+          "Destiny Draw",
+          "Krebons"
+        ],
+        "main": {
+          "Destiny HERO - Diamond Dude": 3,
+          "Destiny HERO - Malicious": 2,
+          "Destiny HERO - Fear Monger": 2,
+          "Destiny HERO - Doom Lord": 2,
+          "Elemental HERO Stratos": 1,
+          "Junk Synchron": 3,
+          "Krebons": 2,
+          "Plaguespreader Zombie": 1,
+          "Mystic Tomato": 2,
+          "Sangan": 1,
+          "Gorz the Emissary of Darkness": 1,
+          "Dark Armed Dragon": 1,
+          "Destiny Draw": 2,
+          "Reinforcement of the Army": 1,
+          "Emergency Teleport": 1,
+          "Foolish Burial": 1,
+          "Allure of Darkness": 1,
+          "Smashing Ground": 2,
+          "Heavy Storm": 1,
+          "Mystical Space Typhoon": 1,
+          "Book of Moon": 2,
+          "Brain Control": 1,
+          "Mirror Force": 1,
+          "Torrential Tribute": 1,
+          "Bottomless Trap Hole": 2,
+          "Dimensional Prison": 2
+        },
+        "extra": [
+          "Stardust Dragon",
+          "Colossal Fighter",
+          "Junk Warrior",
+          "Ally of Justice Catastor",
+          "Goyo Guardian",
+          "Black Rose Dragon"
+        ]
+      }
+    }
+  }
+}

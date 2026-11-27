@@ -7,6 +7,12 @@ from pathlib import Path
 CONFIG = json.loads((Path(__file__).parent / 'data/campaign-acts.json').read_text(encoding='utf8'))
 ACTS = CONFIG['acts']
 FIRST_ACT = {cid: n for n, ids in enumerate(CONFIG['card_ids'], 1) for cid in ids}
+LATER_OPPONENTS = {
+    int(act): dict(rules, returning={int(i): deck for i, deck in rules['returning'].items()})
+    for act, rules in json.loads(
+        (Path(__file__).parent / 'data/later-act-opponents.json').read_text(encoding='utf8')
+    ).items()
+}
 
 
 def active(run):
@@ -19,6 +25,46 @@ def era(run):
 
 def allows(run, cid):
     return not active(run) or FIRST_ACT.get(cid, 4) <= era(run)
+
+
+def later_opponents(run):
+    act = run.get('act')
+    if not run.get('loop') and run.get('history_mode') != 'tag' and not run.get('secret_challenge'):
+        return LATER_OPPONENTS.get(act)
+
+
+def opponent_rules(run):
+    # A save created on 0.2.47 finishes its already announced stretch with the old decks and LP.
+    if run.get('later_opponent_act') == run.get('act'):
+        return later_opponents(run)
+
+
+def encounter_opponents(run, deck_round):
+    from content import eligible_opponents
+    rules = opponent_rules(run)
+    if rules:
+        return [*rules['home'], *rules['returning']]
+    return eligible_opponents(deck_round, run.get('loop', 0), run.get('act'))
+
+
+def opponent_lp(run):
+    from encounters import LP
+    if run.get('encore_active'):
+        return 8000
+    rules = opponent_rules(run)
+    base = (rules['lp'] if rules else LP)[run['round']]
+    return max(8000, base) if run.get('challenge_level', 0) >= 1 else base
+
+
+def returning_record(game, run, opponent):
+    rules = opponent_rules(run)
+    deck = rules and rules['returning'].get(opponent)
+    if deck:
+        card_id = lambda name: game.BY_NAME[name]['id']
+        return dict(name=deck['theme'], tier=min(3, run['round']//3+1), side=[],
+                    main=[card_id(name) for name, copies in deck['main'].items() for _ in range(copies)],
+                    extra=[card_id(name) for name in deck['extra']],
+                    preview=[card_id(name) for name in deck['preview']])
 
 
 def base_minimum(run):
@@ -313,6 +359,8 @@ def transition(game, run, value, rng):
 def preview(game, run, opponent):
     record = game.run_opponent_record(run, opponent)
     main, extra = record['main'], record['extra']
+    if 'preview' in record:
+        return record['preview']
     from content import EDISON_DUELISTS
     duelist = EDISON_DUELISTS.get(opponent)
     if duelist:

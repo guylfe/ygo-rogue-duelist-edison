@@ -1737,6 +1737,19 @@ export function smartContext(e,p,L,prompt=null){
    if(!(own.length<5&&elig.some(x=>atk(x)>threat)&&(n!=='Premature Burial'||e.lp[p]>1800)))return -1;if(best>=1800)return 90;const need=m=>effectiveLevel(m,true)>6?2:effectiveLevel(m,true)>4?1:0;return hand.some(m=>!same(m,c)&&(data(m).type&1)&&need(m)>own.length)?90:-1;
   }
   if(n==='Polymerization')return fusionReady()?95:-1;
+  if(n==='Miracle Fusion'){
+   // Prefer a HERO Fusion that uses two graveyard cards and leaves the field intact.
+   const grave=q(p,L.GRAVE),hero=x=>(data(x).setcodes||[]).some(code=>(code&0xfff)===8);
+   const attributes={'Elemental HERO Absolute Zero':2,'Elemental HERO Gaia':1};
+   const ready=q(p,L.EXTRA).some(fusion=>{
+    const attribute=attributes[name(fusion)];
+    return attribute&&atk(fusion)>threat&&grave.some(x=>hero(x)&&
+     grave.some(y=>!same(x,y)&&(data(y).type&1)&&data(y).attribute===attribute));
+   });
+   return ready&&own.length<5?95:-1;
+  }
+  // The core only offers this trigger with an eligible Sea Serpent in the deck and an open zone.
+  if(n==='Deep Sea Diva'&&chain)return 95;
   if(n==='Power Bond')return fusionReady(fusion=>race(fusion)==='Machine'&&atk(fusion)<e.lp[p],false)?97:-1;
   if(n==='Light Barrier')return [...own,...hand].some(card=>name(card).startsWith('Arcana Force '))?94:-1;
   if(n==='Arcana Force XXI - The World'&&e.phase===512){

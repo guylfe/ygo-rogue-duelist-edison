@@ -9,7 +9,8 @@ ordinary opponents of its stretch so nobody is met twice in one loop.
 
 At LVL 6 the first boss of a run must not repeat the curse taken in Duel 1, which is not chosen yet when the stretch
 starts. The plan then keeps one roll per opening curse ('variants') and settles on the one taken after Duel 1."""
-from content import BOSS_EVERY,CURSES,RUN_LENGTH,eligible_opponents
+from content import BOSS_EVERY,CURSES,RUN_LENGTH
+from campaign_acts import encounter_opponents
 
 def boss_round(rd):return rd-rd%BOSS_EVERY+BOSS_EVERY-1
 
@@ -24,7 +25,7 @@ def planned(run):
  if not active(run) or not isinstance(plan,dict) or run.get('round',0)>=RUN_LENGTH:return None
  rd=boss_round(run['round']);loop=run.get('loop',0);opponent=plan.get('opponent')
  if plan.get('loop')!=loop or plan.get('round')!=rd or type(opponent) is not int:return None
- if opponent==run['character'] or opponent in run.get('defeated_opponents',[]) or opponent not in eligible_opponents(rd,loop,run.get('act')):return None
+ if opponent==run['character'] or opponent in run.get('defeated_opponents',[]) or opponent not in encounter_opponents(run,rd):return None
  return plan
 
 def fits(run,curses):

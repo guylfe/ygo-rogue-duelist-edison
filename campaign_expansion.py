@@ -175,7 +175,16 @@ def install(g):
     key=g.limit_identity(r['pool'][i])
     if ar.copy_limit(r) is None or counts[key]<ar.copy_limit(r):selected.append(i);counts[key]+=1
    r['selected']=selected
-   if r['stage']!='duel' and not r.get('encore_active') and (len(r['routes'])!=(1 if (r['round']+1)%BOSS_EVERY==0 else 5) or any(i not in eligible_opponents(deck_round(r),r.get('loop',0),r.get('act')) or i==r['character'] or i in r.get('defeated_opponents',[]) for i in r['routes'])) and r['round']<RUN_LENGTH:routes(r)
+   if r['stage']!='duel' and not r.get('encore_active') and r['round']<RUN_LENGTH:
+    boss=(r['round']+1)%BOSS_EVERY==0
+    eligible=acts.encounter_opponents(r,deck_round(r))
+    available=set(eligible)-{r['character'],*r.get('defeated_opponents',[])}
+    if acts.opponent_rules(r) and not boss:
+     import boss_preview
+     plan=boss_preview.planned(r)
+     if plan:available.discard(plan['opponent'])
+    count=1 if boss else min(5,len(available)) if acts.opponent_rules(r) else 5
+    if not r['routes'] or len(r['routes'])!=count or any(i not in available for i in r['routes']):routes(r)
    import boss_preview
    if boss_preview.ensure(r,random,route_choices,boss_curse_block):save(r)
    if r.get('reward_rules')!=5 and r['stage']!='duel':
@@ -232,13 +241,16 @@ def install(g):
  def route_choices(run,rng=random,avoid=()):
   """Who routes() may offer on run['round']; avoid keeps a stretch's planned boss out of its ordinary duels."""
   rd=run['round'];boss=(rd+1)%BOSS_EVERY==0;tutorial=deck_round(run)==0 and not run.get('loop')
-  if tutorial:choices=list(TUTORIAL_OPPONENTS)
-  elif rd>=6:choices=[0,1,6,15,17,27]
-  elif boss:choices=[0,1,3,4,6,7,11,15,17,27]
-  else:choices=list(GAME_DECKS)
-  eligible=eligible_opponents(deck_round(run),run.get('loop',0),run.get('act'))
-  choices+=[i for i in eligible if (i in TIER_EXCLUSIVE_OPPONENTS or i in UC_OPPONENTS or i in EDISON_DUELISTS) and i not in choices]
-  choices=[i for i in choices if i in eligible]
+  eligible=acts.encounter_opponents(run,deck_round(run))
+  if acts.opponent_rules(run):
+   choices=eligible
+  else:
+   if tutorial:choices=list(TUTORIAL_OPPONENTS)
+   elif rd>=6:choices=[0,1,6,15,17,27]
+   elif boss:choices=[0,1,3,4,6,7,11,15,17,27]
+   else:choices=list(GAME_DECKS)
+   choices+=[i for i in eligible if (i in TIER_EXCLUSIVE_OPPONENTS or i in UC_OPPONENTS or i in EDISON_DUELISTS) and i not in choices]
+   choices=[i for i in choices if i in eligible]
   defeated=set(run.get('defeated_opponents',[]))|set(avoid)
   choices=[i for i in choices if i not in defeated and i!=run['character']]
   if len(choices)<5:
@@ -252,6 +264,8 @@ def install(g):
   rd=run['round'];boss=(rd+1)%BOSS_EVERY==0;tutorial=deck_round(run)==0 and not run.get('loop')
   # Next boss preview (2026-11-15): the stretch's boss is rolled when it starts and used when its round arrives.
   import boss_preview
+  if acts.later_opponents(run) and not boss_preview.planned(run):
+   run['later_opponent_act']=run['act']
   plan=boss_preview.planned(run) if boss else boss_preview.ensure_opponent(run,rng,route_choices)
   if boss and plan and not exclude:run['routes']=[plan['opponent']]
   else:
@@ -370,6 +384,8 @@ def install(g):
   import fallen_collectors
   fallen=fallen_collectors.opponent(run,opponent)
   if fallen:return acts.filter_deck(g,run,fallen['deck'],opponent)
+  curated=acts.returning_record(g,run,opponent)
+  if curated:return curated
   rd=deck_round(run)
   if rd==0 and not run.get('loop'):
    n=run.get('tutorial_variants',{}).get(str(opponent),0)%len(encounters.TUTORIALS)
@@ -491,7 +507,7 @@ def install(g):
   lp=max(1,lp-1000*ar.copies(duel_run,'cursed_wounded_merchant'))
   lp=max(1,lp-amount(mirror,'enemy_lp')+4000*ar.copies(mirror,'cursed_loaded_purse'))
   request=dict(protocol=1,id=uuid.uuid4().hex,lp=lp,round=run['round'],opponent=run['opponent'])
-  char=CHARACTERS[run['opponent']];enemy_lp=(8000 if run.get('encore_active') or run.get('challenge_level',0)>=1 else encounters.LP[run['round']])+run.get('loop',0)*endless.LOOP['lp']-amount(duel_run,'enemy_lp')
+  char=CHARACTERS[run['opponent']];enemy_lp=acts.opponent_lp(run)+run.get('loop',0)*endless.LOOP['lp']-amount(duel_run,'enemy_lp')
   enemy_lp=max(1,enemy_lp+4000*ar.copies(duel_run,'cursed_loaded_purse'))
   if owns(mirror,'glass_shard'):enemy_lp=ART_INFO['glass_shard']['amount']
   enemy_lp=max(1,enemy_lp-1000*ar.copies(mirror,'cursed_wounded_merchant'))

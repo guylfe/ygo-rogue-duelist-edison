@@ -2958,7 +2958,7 @@ html.performance-mode img[src$="sleeves/cards/rainbow.jpg"],html.compatibility-m
 h3.with-run-strip{display:flex;align-items:center;gap:10px;white-space:nowrap}
 .run-strip-heading{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .shop-compact>header>.run-strip{display:none}
-@media(orientation:portrait){h3.with-run-strip>.run-strip{display:none}.shop-compact>header>.run-strip{display:flex;margin-right:8px;padding:4px 10px;border:1px solid #66829066;border-radius:12px;background:#061018c4}.shop-compact>header>.run-strip .run-strip-label{display:none}}
+@media(orientation:portrait){h3.with-run-strip>.run-strip{display:none}.shop-compact>header>.run-strip{display:flex;margin-right:8px;padding:4px 10px;border:1px solid #66829066;border-radius:12px;background:#061018c4}.shop-compact>header>.run-strip:not(.act-progress) .run-strip-label{display:none}}
 /* Portrait shop top bar stays on one row on every phone (Discord, 2026-11-10): the victory track shrinks before
    anything wraps (down to 8px per duel), then Tag's turn pill; the round buttons shrink a little on narrow screens, and
    LP, Settings and Close stay at the right edge. CSS only, no resize work.

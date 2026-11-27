@@ -6,6 +6,7 @@ const FACE_UP = 5;
 const SYNCHRO_MATERIAL = 512;
 export const PLAGUESPREADER = 33420078;
 const ZOMBIE = 16;
+const SEA_SERPENT = 0x40000;
 const WHITE_STONE = 79814787;
 const GOBLIN_ZOMBIE = 63665875;
 const effectValue = new Map([
@@ -101,15 +102,23 @@ export function synchroChoice(engine, prompt, smart, own, enemy, strength) {
  });
  if (best) return best;
 
- if (own.length >= 5 || !prepared.length) return null;
+ if (own.length >= 5) return null;
  (prompt.summons || []).forEach((card,index) => {
   const data = engine.data[card.code];
   if (!data || data.level > 4 || engine.destroyedOnNormalSummon(card)) return;
   const setupCard = {...card, name:engine.name(card.code), level:data.level, attack:data.attack,
    defense:data.defense, position:1};
+  const board = [...prepared,setupCard];
+  // Normal Summoning Diva can supply both materials, even on an empty field.
+  const recruits = setupCard.name==='Deep Sea Diva' && own.length<=3 && smart.effectsEnabled(side)
+   ? engine.query(side,L.DECK).filter(c=>c&&Number(engine.data[c.code]?.race)===SEA_SERPENT
+      && engine.data[c.code].level<=3 && !(engine.data[c.code].type&TUNER))
+   : [];
   for (const extra of deck) {
    const target = engine.cards.get(extra.code);
-   if (target && isSynchro(engine.data[extra.code])) consider('normal',index,extra.code,target,[...prepared,setupCard],setupCard);
+   if (!target || !isSynchro(engine.data[extra.code])) continue;
+   consider('normal',index,extra.code,target,board,setupCard);
+   for (const recruit of recruits) consider('normal',index,extra.code,target,[...board,recruit],setupCard);
   }
  });
  if (revival>=0) {
