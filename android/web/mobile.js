@@ -84,7 +84,7 @@ import {openEmotePicker,showDuelEmote,clearDuelEmotes,setEmoteVolumeReader,posit
 import {rewardMarkup,mountRewardSlots} from './reward-slots.js?v=reward-persistent-1';
 
 import {duelLogMarkup} from './duel-log-ui.js';
-import {loadPlaytestDrafts,savePlaytestDraft,newPlaytestDraft,noteLimit,playtestArchived,playtestIssue,reportLink,getPlaytestCode,savePlaytestCode,playtestReceipt,postPlaytest} from './edison-playtest.js';
+import {loadPlaytestDrafts,savePlaytestDraft,newPlaytestDraft,noteLimit,pendingPlaytestDrafts,playtestPreviouslySent,playtestReceipt,postPlaytest} from './edison-playtest.js';
 
 import {equippedTarget} from './equip-target.js';
 
@@ -415,49 +415,63 @@ function shell(title,body,tools='',cls=''){app.innerHTML=`<div class="page ${cls
 
 const playtestScenes={starter:'Starter',draft:'Deck building',routes:'Route select',shop:'Shop',act_transition:'Act transition',duel:'Duel'};
 let playtestDraft=null,playtestRunKey=null,playtestSceneLog=[];
-let sendingPlaytest=false,playtestRetryTimer=0,playtestNeedsCode=false;
+let sendingPlaytest=false,playtestRetryTimer=0,playtestRetryAt=0;
+const playtestSent=draft=>Boolean(playtestReceipt(draft)||playtestPreviouslySent(draft));
+const playtestChoice=draft=>(draft.note.trim().slice(0,48)||'New note')+
+ (playtestSent(draft)?' (sent)':draft.queued?' (pending)':draft.fileRejected?' (send failed)':'');
 function playtestStatus(draft){
- if(playtestReceipt(draft))return 'Published as GitHub issue #'+draft.issueNumber+'.';
- if(draft.archived)return 'Published on GitHub.';
- if(draft.opened)return 'Submit on GitHub while signed in as guylfe, then check the archive here.';
- if(draft.rejected)return 'The service rejected this report. Your note is saved here.';
+ if(playtestReceipt(draft))return 'Suggestion sent.';
+ if(playtestPreviouslySent(draft))return 'Sent from an earlier build.';
+ if(draft.fileRejected)return 'Couldn’t send this suggestion. Your note is still saved here.';
  if(draft.queued){
-  if(navigator.onLine===false)return 'Queued offline. Edison will retry when connected.';
-  if(!getPlaytestCode()||playtestNeedsCode)return 'Note saved. Enter your playtest code to send it.';
-  return 'Queued. Edison will show the GitHub issue number when it’s published.';
+  if(navigator.onLine===false)return 'Saved offline. Edison will send it when you reconnect.';
+  return 'Upload pending. Edison will retry automatically.';
  }
  return 'Draft saves on this device as you type.';
 }
-function refreshPlaytestReceipt(draft){
+function refreshPlaytestStatus(draft){
  if(playtestDraft?.id!==draft.id)return;
  playtestDraft=draft;
- if(modal.open&&modal.querySelector('.playtest-editor'))openPlaytestNote(false,draft.id);
+ const editor=modal.open&&modal.querySelector('.playtest-editor');
+ if(!editor)return;
+ editor.querySelector('#playtest-status').textContent=playtestStatus(draft);
+ editor.querySelector('#edison-playtest-note').readOnly=playtestSent(draft)||draft.queued||draft.fileRejected;
+ const choice=editor.querySelector('#edison-playtest-drafts')?.selectedOptions[0];
+ if(choice)choice.textContent=playtestChoice(draft);
+ const send=editor.querySelector('[data-do="playtest-submit"]');
+ send.textContent=draft.queued||draft.fileRejected?'Retry now':'Send';
+ send.hidden=playtestSent(draft);
+ if(send.hidden&&document.activeElement===send){
+  (editor.querySelector('[data-do="playtest-new"]:not([hidden])')||modal.querySelector('[data-do="close"]'))?.focus();
+ }
 }
 async function flushPlaytestNotes(){
+ if(sendingPlaytest||navigator.onLine===false||Date.now()<playtestRetryAt)return;
  clearTimeout(playtestRetryTimer);
- if(sendingPlaytest||navigator.onLine===false||!getPlaytestCode()||playtestNeedsCode)return;
  sendingPlaytest=true;
  try{
-  const drafts=loadPlaytestDrafts().filter(item=>item.queued&&!item.rejected);
-  for(const draft of drafts){
+  for(const draft of pendingPlaytestDrafts()){
    try{
-    const result=await postPlaytest(draft,getPlaytestCode(),replayVersion);
+    const result=await postPlaytest(draft,replayVersion);
+    if(result.retryAt){playtestRetryAt=result.retryAt;break}
     if(result.pending)continue;
-    if(result.needsCode){playtestNeedsCode=true;refreshPlaytestReceipt(draft);break}
-    const updated={...draft,...(result.rejected?{rejected:true}:{queued:false,issueNumber:result.issueNumber})};
-    if(savePlaytestDraft(updated))refreshPlaytestReceipt(updated);
+    const current=loadPlaytestDrafts().find(item=>item.id===draft.id);
+    if(!current||playtestSent(current))continue;
+    const updated={...current,queued:false,fileRejected:result.rejected===true};
+    if(result.filePath)updated.filePath=result.filePath;
+    if(savePlaytestDraft(updated))refreshPlaytestStatus(updated);
    }catch{/* The queued report remains intact for the next retry. */}
   }
  }finally{
   sendingPlaytest=false;
-  if(!playtestNeedsCode&&loadPlaytestDrafts().some(item=>item.queued&&!item.rejected)){
-   playtestRetryTimer=setTimeout(flushPlaytestNotes,60000);
+  if(navigator.onLine!==false&&pendingPlaytestDrafts().length){
+   playtestRetryTimer=setTimeout(flushPlaytestNotes,Math.max(60000,playtestRetryAt-Date.now()));
   }
  }
 }
 window.addEventListener('online',()=>{void flushPlaytestNotes()});
 window.addEventListener('offline',()=>{
- if(playtestDraft?.queued)refreshPlaytestReceipt(playtestDraft);
+ if(playtestDraft?.queued)refreshPlaytestStatus(playtestDraft);
 });
 setTimeout(flushPlaytestNotes,0);
 function canWritePlaytestNote(){return !!state?.run&&!tagUI&&!lesson&&Object.hasOwn(playtestScenes,screen)}
@@ -480,6 +494,7 @@ function capturePlaytestDraft(){
 function openPlaytestNote(startNew=false,selectedId=null){
  const saved=loadPlaytestDrafts();
  if(selectedId)playtestDraft=saved.find(item=>item.id===selectedId)||playtestDraft;
+ else if(playtestDraft)playtestDraft=saved.find(item=>item.id===playtestDraft.id)||playtestDraft;
  if(startNew||!playtestDraft)playtestDraft=(startNew?null:saved[0])||(canWritePlaytestNote()?capturePlaytestDraft():null);
  const draft=playtestDraft;
  if(!draft)return;
@@ -487,18 +502,15 @@ function openPlaytestNote(startNew=false,selectedId=null){
  const context=draft.details.map(([key,value])=>`${key}: ${value}`).join(' · ');
  const choices=[draft,...saved.filter(item=>item.id!==draft.id)];
  dialog('Playtest note',`<div class="playtest-editor">
-  <p>Your note and the game details below will appear in a public GitHub issue. Leave out personal information.</p>
-  ${choices.length>1?`<label>Saved reports <select id="edison-playtest-drafts">${choices.map(item=>`<option value="${esc(item.id)}">${esc(item.note.trim().slice(0,48)||'New note')}${item.archived||playtestReceipt(item)?' (published)':item.queued?' (queued)':''}</option>`).join('')}</select></label>`:''}
+  <p>Your note and the game details below go to the Edison team. Leave out personal information.</p>
+  ${choices.length>1?`<label>Saved reports <select id="edison-playtest-drafts">${choices.map(item=>`<option value="${esc(item.id)}">${esc(playtestChoice(item))}</option>`).join('')}</select></label>`:''}
   <label for="edison-playtest-note">Note (up to ${noteLimit} characters)</label>
-  <textarea id="edison-playtest-note" rows="4" maxlength="${noteLimit}" ${draft.opened||draft.queued||playtestReceipt(draft)?'readonly':''}>${esc(draft.note)}</textarea>
+  <textarea id="edison-playtest-note" rows="4" maxlength="${noteLimit}" ${playtestSent(draft)||draft.queued||draft.fileRejected?'readonly':''}>${esc(draft.note)}</textarea>
   <details><summary>Game context and recent log</summary><p>${esc(context)}</p><pre>${esc(draft.log.join('\n')||'No recent game events were available.')}</pre></details>
   <p class="playtest-reference">Report ${esc(draft.id)}</p>
   <p id="playtest-status" role="status">${esc(playtestStatus(draft))}</p>
-  ${!draft.opened&&!draft.archived&&!playtestReceipt(draft)&&(!getPlaytestCode()||playtestNeedsCode)?`<label for="edison-playtest-code">Playtest code</label><input id="edison-playtest-code" type="password" autocomplete="off" placeholder="Enter your playtest code">`:''}
-  <div class="actions">${draft.archived||playtestReceipt(draft)?btn(playtestReceipt(draft)?'View issue #'+draft.issueNumber:'View archived report','playtest-view','','primary'):
-   draft.opened?btn('Reopen GitHub','playtest-legacy','','primary')+btn('Check archive','playtest-check'):
-   draft.rejected?'':btn(draft.queued?(playtestNeedsCode||!getPlaytestCode()?'Save code and send':'Retry now'):'Send','playtest-submit','','primary')}
-   ${canWritePlaytestNote()?btn('New note','playtest-new',draft.archived||draft.note?'':'hidden'):''}</div>
+  <div class="actions">${btn(draft.queued||draft.fileRejected?'Retry now':'Send','playtest-submit',playtestSent(draft)?'hidden':'','primary')}
+   ${canWritePlaytestNote()?btn('New note','playtest-new',draft.note.trim()?'':'hidden'):''}</div>
  </div>`);
  modal.querySelector('#edison-playtest-drafts')?.addEventListener('change',event=>openPlaytestNote(false,event.target.value));
  const note=modal.querySelector('#edison-playtest-note');
@@ -509,43 +521,17 @@ function openPlaytestNote(startNew=false,selectedId=null){
   modal.querySelector('#playtest-status').textContent=savePlaytestDraft(draft)?'Draft saved on this device.':'Local storage is unavailable. Keep this window open to retain your note.';
  });
 }
-function openPlaytestLink(url){
- if(window.ShadowNative?.openEdisonPlaytestLink)window.ShadowNative.openEdisonPlaytestLink(url);
- else window.open(url,'_blank','noopener,noreferrer');
-}
-async function playtestNoteAction(action,button){
+function playtestNoteAction(action){
  if(action==='playtest-note'||action==='playtest-new'){openPlaytestNote(action==='playtest-new');return}
  const draft=playtestDraft,status=modal.querySelector('#playtest-status');
- if(!draft||!status)return;
- if(action==='playtest-view'){openPlaytestLink(playtestReceipt(draft)||reportLink(draft.id));return}
- try{
-  if(action==='playtest-submit'){
-   if(!draft.note.trim())throw Error('Write a note before sending.');
-   if(draft.archived||draft.opened||draft.rejected||playtestReceipt(draft))return;
-   const queued={...draft,queued:true,submittedBuild:draft.submittedBuild||Object.fromEntries(draft.details).Version||replayVersion};
-   if(!savePlaytestDraft(queued))throw Error('Could not save this draft on the device.');
-   playtestDraft=queued;
-   const code=modal.querySelector('#edison-playtest-code')?.value;
-   if(code){
-    try{savePlaytestCode(code);playtestNeedsCode=false}
-    catch(error){refreshPlaytestReceipt(queued);modal.querySelector('#playtest-status').textContent=error.message;return}
-   }
-   refreshPlaytestReceipt(queued);
-   void flushPlaytestNotes();
-   return;
-  }
-  if(navigator.onLine===false){status.textContent='You’re offline. Your draft is still saved on this device.';return}
-  if(action==='playtest-legacy')openPlaytestLink(playtestIssue(draft).url);
-  if(action==='playtest-check'&&draft.opened){
-   button.disabled=true;
-   status.textContent='Checking GitHub…';
-   if(!await playtestArchived(draft)){status.textContent='The archive is not available yet. Submit on GitHub, then check again.';return}
-   if(!savePlaytestDraft({...draft,archived:true}))throw Error('The report is published. The device could not save the receipt.');
-   draft.archived=true;
-   if(status.isConnected)openPlaytestNote();
-  }
- }catch(error){status.textContent=error.message||'GitHub could not be reached. Your draft is still saved on this device.'}
- finally{button.disabled=false}
+ if(action!=='playtest-submit'||!draft||!status||playtestSent(draft))return;
+ if(!draft.note.trim()){status.textContent='Write a note before sending.';return}
+ const current=loadPlaytestDrafts().find(item=>item.id===draft.id);
+ if(current&&playtestSent(current)){refreshPlaytestStatus(current);return}
+ const queued={...draft,queued:true,fileRejected:false,submittedBuild:draft.submittedBuild||Object.fromEntries(draft.details).Version||replayVersion};
+ if(!savePlaytestDraft(queued)){status.textContent='Could not save this draft on the device.';return}
+ refreshPlaytestStatus(queued);
+ void flushPlaytestNotes();
 }
 
 let inspectParent=null;
@@ -2669,7 +2655,7 @@ async function togglePackFavourite(id){
  try{await command('settings',state.settings)}catch(error){toast(error.message)}
 }
 async function action(a,el={dataset:{}},silent=false){
- if(a?.startsWith('playtest-'))return playtestNoteAction(a,el);
+ if(a?.startsWith('playtest-'))return playtestNoteAction(a);
  if(a==='pack-favourite'){void togglePackFavourite(el.dataset.pack);return}
  if(a==='relic-lock'){if(busy)return;busy=true;try{await command('relic-lock',+el.dataset.index);renderShop();app.querySelector(`.relic-lock[data-index="${el.dataset.index}"]`)?.classList.add('fav-pop')}finally{busy=false}return}
  if(a==='collection-favourite-packs'){collectionFavouritePacks=!collectionFavouritePacks;collectionPage=0;renderCollection();return}
