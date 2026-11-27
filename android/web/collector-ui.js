@@ -13,7 +13,8 @@ import {validateDeck,deckCards,rankFor,LIMITS,moveSideCard} from './collector-ru
 import {decode} from './tag-session.js';
 import {showAdminText} from './room-admin.js';
 import {TagDuel} from './tag-duel.js';
-import {replayVersion} from './replay-version.js';
+import {edisonBuild} from './replay-version.js';
+import {roomService} from './edison-services.js';
 import {HubSocket} from './hub-socket.js';
 import {partnerSleeve} from './sleeves.js';
 // With the room hub open, polls only guard against a missed nudge.
@@ -27,10 +28,9 @@ export class CollectorUI {
  enqueue(fn){const next=this.queue.then(()=>this.alive?fn():undefined);this.queue=next.catch(async e=>{if(!this.alive)return;const text=await explainOnlineError(e);if(!this.alive)return;this.status=text;this.dialog(this.isDraft?'Draft Duels':'Ultimate Collector',`<p>${esc(text)}</p>`)});return this.queue;}
  init(){const pending=this.queue.then(()=>this.initialize());this.queue=pending.catch(()=>{});return pending;}
  async initialize(){
- const configPromise=fetch('./multiplayer-config.json').then(r=>r.json());
  this.data=await this.backend('collector-list');if(!this.alive)return;
  this.duelist=null;this.render();
- this.connectionReady=configPromise.then(config=>{this.endpoint=(config.signalingUrl||'').replace(/\/$/,'');if(!this.endpoint)throw Error('Online service is not configured.');});
+ this.connectionReady=Promise.resolve().then(roomService).then(endpoint=>{this.endpoint=endpoint;});
  this.registrations=new Map();
  for(const d of this.data.duelists.filter(d=>d.status==='alive')){
   const pending=this.connectionReady.then(()=>this.alive?this.api('register',{duelist:d},d):null);
@@ -48,7 +48,7 @@ export class CollectorUI {
  }
 
  // text/plain keeps this a CORS simple request (no OPTIONS preflight); the service parses the raw body.
- async api(op,body={},d=this.duelist){const response=await fetch(`${this.endpoint}/v2/collector/${op}`,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({id:d.id,token:d.token,version:replayVersion,net:3,...(this.sleeve?{sleeve:this.sleeve()}:{}),...body},(_,v)=>typeof v==='bigint'?{__bigint:String(v)}:v),signal:AbortSignal.timeout(15000)});const result=await response.json();if(!response.ok){const error=Error(result.error||'Collector service unavailable.');error.status=response.status;throw error;}return result;}
+ async api(op,body={},d=this.duelist){const response=await fetch(`${roomService()}/v2/collector/${op}`,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({id:d.id,token:d.token,version:edisonBuild,net:3,...(this.sleeve?{sleeve:this.sleeve()}:{}),...body},(_,v)=>typeof v==='bigint'?{__bigint:String(v)}:v),signal:AbortSignal.timeout(15000)});const result=await response.json();if(!response.ok){const error=Error(result.error||'Collector service unavailable.');error.status=response.status;throw error;}return result;}
  // The opponent's card sleeve from the room (rooms Worker, collector.mjs sleeveOf), checked like a Tag partner's.
  opponentSleeve(){const other=this.room?.players?.[1-this.seat]?.sleeve;return other?partnerSleeve(this.content,{sleeve:other.key,profile:other.proof}):null}
  async sync(result){this.data=await this.backend('collector-sync',{id:this.duelist.id,record:result.record});this.duelist=this.data.duelists.find(d=>d.id===this.duelist.id);}

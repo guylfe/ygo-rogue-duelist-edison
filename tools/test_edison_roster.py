@@ -43,7 +43,7 @@ def player_eligible(run, cid):
     return acts.allows(run, cid) or any(cid in slot for slot in exceptions.values())
 
 
-assert digest(content.CHARACTERS[:98]) == 'e6007bd9bd06cc40d1433baf794c38d21b2cb6ba7dc8d98f802d4e99928e3ab4'
+assert digest([row for i,row in enumerate(content.CHARACTERS[:98]) if i not in content.RETIRED_COLLECTOR_IDS]) == 'b05ae66de22d1fe783f3e91511d209861ee08ff2e78ef8aeb28951f526435c04'
 assert digest(content.PLAYABLE_IDS[:36]) == '2beb586475543e995f2460c25ed4f356dea805a14785dd0239038665fa11a25f'
 assert digest(content.PACKS[:126]) == '1cf01f98a38ef644eb5a628f8439d31cce30f8f5339e178573c27bf3011467f1'
 legacy_decks = {str(i): [content.opponent_record(t*3,i) for t in range(3)] + [content.opponent_record(0,i,loop=1)] for i in content.GAME_DECKS}

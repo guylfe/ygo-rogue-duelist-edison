@@ -8,9 +8,8 @@ const start=source.indexOf('async function persist(');
 const persist=source.slice(start,source.indexOf('\n',start));
 function sandbox({native}={}){
  const files={'run.json':'{"gold":40}','profile.json':'{"wins":3}','profile.bak':'{"wins":2}','notes.txt':'not a save'};
- const ctx={JSON,Error,stored:[],queued:[],local:new Map(),files,
+ const ctx={JSON,Error,stored:[],local:new Map(),files,
   py:{FS:{readdir:()=>Object.keys(files),readFile:name=>files[name.split('/').at(-1)]}},
-  deviceBackup:{queue:data=>ctx.queued.push(data)},
   localStorage:{setItem:(k,v)=>ctx.local.set(k,v)}};
  ctx.window=native?{ShadowNative:native}:{};if(native)ctx.ShadowNative=native;
  vm.createContext(ctx);vm.runInContext(`let lastPersistedData='';${persist}`,ctx);return ctx;
@@ -21,8 +20,7 @@ function sandbox({native}={}){
  await ctx.persist();assert.equal(writes.length,1);
  assert.deepEqual(Object.keys(JSON.parse(writes[0])).sort(),['profile.bak','profile.json','run.json'],'only .json and .bak save files');
  await ctx.persist();assert.equal(writes.length,1,'an unchanged save is not rewritten');
- await ctx.persist(true);assert.equal(writes.length,1);assert.equal(ctx.queued.length,1,'a cloud checkpoint still queues the unchanged save');
- ctx.files['run.json']='{"gold":55}';await ctx.persist(true);assert.equal(writes.length,2);assert.equal(JSON.parse(writes[1])['run.json'],'{"gold":55}');assert.equal(ctx.queued.length,2);
+ ctx.files['run.json']='{"gold":55}';await ctx.persist();assert.equal(writes.length,2);assert.equal(JSON.parse(writes[1])['run.json'],'{"gold":55}');
  assert.equal(ctx.local.size,0,'Android never falls back to browser storage');
 }
 // A failed native write is an error, and the next persist tries again rather than assuming it was saved.

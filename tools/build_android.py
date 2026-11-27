@@ -25,7 +25,7 @@ def sync():
  from generate_art_crops import generate
  generate()
  WEB.mkdir(exist_ok=True)
- (WEB/'replay-version.js').write_text('export const replayVersion='+json.dumps((ROOT/'VERSION').read_text().strip())+';\n',encoding='utf8')
+ (WEB/'replay-version.js').write_text('export const replayVersion='+json.dumps((ROOT/'VERSION').read_text().strip())+';\nexport const edisonBuild=replayVersion+"-edison";\n',encoding='utf8')
  champion_ids=json.loads((ROOT/'data/champion-ultra.json').read_text(encoding='utf8'))['cards']
  (WEB/'champion-cards.js').write_text('export const championCards='+json.dumps(champion_ids)+';\n',encoding='utf8')
  system_strings={}
@@ -42,6 +42,7 @@ def sync():
  # data/cards.json is the historical input; content.era_cards() loads the campaign catalogue.
  for p in (ROOT/'data').glob('*.json'):
   if p.name!='cards.json':files['data/'+p.name]=p.read_text(encoding='utf8')
+ files['data/fallen-collectors.json']=json.dumps(dict(schema=1,opponents=[],retiredOpponentIds=sorted(content.RETIRED_COLLECTOR_IDS)))
  for p in (ROOT/'data/decks').glob('*'):files['data/decks/'+p.name]=p.read_text(encoding='utf8')
  (WEB/'campaign-files.json').write_text(json.dumps(files,ensure_ascii=False),encoding='utf8')
  from cache_tokens import audit
@@ -169,7 +170,7 @@ def sync():
  images=[p.as_posix() for p in packaged if p.suffix.lower() in ('.jpg','.png','.webp','.gif','.svg') and p.parts[:2]!=('assets','cards')]
  (WEB/'startup-assets.json').write_text(json.dumps(dict(audio=audio,images=images)),encoding='utf8')
  digest=hashlib.sha256(json.dumps(files,sort_keys=True).encode()).hexdigest()
- (WEB/'build.json').write_text(json.dumps(dict(version=(ROOT/'VERSION').read_text().strip(),built=time.strftime('%Y-%m-%d %H:%M'),campaignHash=digest,webEngine='ocgcore-wasm 0.1.2',androidEngine='ocgcore-wasm 0.1.2',cards=len(game.CARDS),tokens=len(ids)-len(game.CARDS))))
+ (WEB/'build.json').write_text(json.dumps(dict(edition='edison',version=(ROOT/'VERSION').read_text().strip(),built=time.strftime('%Y-%m-%d %H:%M'),campaignHash=digest,webEngine='ocgcore-wasm 0.1.2',androidEngine='ocgcore-wasm 0.1.2',cards=len(game.CARDS),tokens=len(ids)-len(game.CARDS))))
  print('Synchronized campaign,',len(ids),'card/token images and desktop UI assets.',flush=True)
 
 def build(signing_password):

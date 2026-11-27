@@ -3,7 +3,7 @@ const status=()=>new Promise((resolve,reject)=>{const channel=new MessageChannel
 try{
  // The itch.io desktop app serves games from itch-cave://, where no service worker can run (Discord, 2026-11-16).
  // The Windows app is the one desktop version (user, 2026-11-16), so this points there.
- if(!/^https?:$/.test(location.protocol))throw Error('The itch.io desktop app cannot run this game. Play it in your web browser on itch.io, or get the Windows app, which runs fully offline: github.com/Thronior/ygo-rogue-duelist/releases/latest/download/YGO-Rogue-Windows-Setup.exe');
+ if(!/^https?:$/.test(location.protocol))throw Error('Open the hosted Edison edition in your web browser.');
  if(!navigator.serviceWorker)throw Error('This browser cannot load artwork inside the embedded player. Please open the game directly.');
  const registration=await navigator.serviceWorker.register('./sw.js',{scope:'./',updateViaCache:'none'});
  await Promise.race([navigator.serviceWorker.ready,new Promise((_,reject)=>setTimeout(()=>reject(Error('The embedded player could not finish loading. Please retry or open the game directly.')),25000))]);
@@ -16,5 +16,5 @@ try{
  document.querySelector('#loading-count').textContent=error.message;
  const actions=document.createElement('p');
  const retry=document.createElement('button');retry.textContent='Retry';retry.onclick=()=>location.reload();actions.append(retry,' ');
- const link=document.createElement('a');link.href='https://ygo-rogue.pages.dev/';link.target='_blank';link.rel='noopener';link.textContent='Open game directly';link.style.color='#ffe3a6';actions.append(link);document.querySelector('.loading').append(actions);
+ const link=document.createElement('a');link.href='https://rogue-duelist-edison.netlify.app/';link.target='_blank';link.rel='noopener';link.textContent='Open game directly';link.style.color='#ffe3a6';actions.append(link);document.querySelector('.loading').append(actions);
 }

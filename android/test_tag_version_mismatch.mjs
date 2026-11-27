@@ -10,7 +10,7 @@ globalThis.Audio??=class{constructor(src){this.src=src}addEventListener(){}play(
 const values=new Map();globalThis.localStorage={getItem:k=>values.get(k)??null,setItem:(k,v)=>values.set(k,String(v)),removeItem:k=>values.delete(k)};
 const {TagSession,mismatchMessage}=await import('./web/tag-session.js');
 const {setupRandomCards,syncRandomCards}=await import('./web/random-cards.js');
-const {replayVersion}=await import('./web/replay-version.js');
+const {replayVersion,edisonBuild}=await import('./web/replay-version.js');
 const root=fileURLToPath(new URL('../',import.meta.url));
 const load=()=>JSON.parse(fs.readFileSync(root+'android/web/content.json','utf8').replace(/^﻿/,''));
 let checks=0;const check=(value,why)=>{assert(value,why);checks++};
@@ -31,7 +31,7 @@ const session=(content,seat)=>{const s=new TagSession({endpoint:'http://localhos
 const host=session(cormax,0),guest=session(partner,1);
 check(await host.contentHash===await guest.contentHash,'randomized cards stay out of the Tag content hash');
 const hostHello=await host.greeting(),guestHello=await guest.greeting();
-check(hostHello.build===replayVersion,'the hello carries the game version');
+check(hostHello.build===edisonBuild,'the hello carries the game version');
 await host.receive(guestHello);check(host.connected,'Cormax hosting connects');
 await guest.receive(hostHello);check(guest.connected,'his partner connects');
 // Both roles: Cormax as the guest too.
@@ -41,10 +41,11 @@ check(g2.connected&&h2.connected,'Cormax joining as the guest connects');
 // A genuine mismatch names the side that is out of date.
 const older=session(partner,0);
 await assert.rejects(older.receive({...guestHello,contentHash:'old',build:undefined}),e=>/Your partner's game is out of date\. They need to update to v/.test(e.message));checks++;
-await assert.rejects(older.receive({...guestHello,contentHash:'old',build:'0.0.1'}),e=>e.message.includes("partner's game is out of date (v0.0.1)"));checks++;
-await assert.rejects(older.receive({...guestHello,contentHash:'new',build:'999.0.0'}),e=>e.message.startsWith('Your game is out of date (v'+replayVersion+')'));checks++;
+await assert.rejects(older.receive({...guestHello,contentHash:'old',build:'0.0.1-edison'}),e=>e.message.includes("partner's game is out of date (v0.0.1-edison)"));checks++;
+await assert.rejects(older.receive({...guestHello,contentHash:'new',build:'999.0.0-edison'}),e=>e.message.startsWith('Your game is out of date (v'+edisonBuild+')'));checks++;
 await assert.rejects(older.receive({...guestHello,contentHash:'other'}),e=>/You both have v.*card data does not match/.test(e.message));checks++;
 await assert.rejects(older.receive({...guestHello,version:4}),/out of date|does not match/);checks++;
+await assert.rejects(older.receive({...guestHello,build:replayVersion}),/requires Rogue Duelist: Edison/);checks++;
 check(!older.connected,'a refused partner never connects');
 check(mismatchMessage('0.2.9','0.2.10').includes('partner'),'versions compare by number, not as text');
 check(mismatchMessage('0.2.10','0.2.9').startsWith('Your game'),'a newer partner means this game is out of date');

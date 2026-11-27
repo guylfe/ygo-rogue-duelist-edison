@@ -1,3 +1,4 @@
+import {cloudUnavailable} from './edison-services.js';
 import {replayVersion} from './replay-version.js';
 import {quotaExhausted,pauseForQuota,quotaPausedUntil,clearQuotaPause} from './quota-pause.js';
 const OPT_IN='ygo-cloud-saves-enabled';
@@ -64,9 +65,9 @@ export function validateRecovery(value){
  for(const [key,text] of Object.entries(extras)){if(!EXTRAS.includes(key)||typeof text!=='string')throw Error('Invalid recovery extras.');JSON.parse(text)}
  return {files,extras};
 }
-export function createBackupClient({storage=localStorage,online=()=>navigator.onLine,visible=()=>!document.hidden,request=fetch,version=replayVersion,platform=()=>window.ShadowNative?'Android':navigator.standalone?'Home Screen':'Web',enabled=!/^(localhost|127\.0\.0\.1)$/.test(location.hostname),now=Date.now,setTimer=setTimeout,clearTimer=clearTimeout}={}){
- let uploadGuard=()=>true;const optedIn=()=>storage.getItem(OPT_IN)==='true';
- let latest=null,timer=null,busy=false,closed=false,last=0,failures=0,base,lastError='';
+export function createBackupClient({storage=localStorage,online=()=>navigator.onLine,visible=()=>!document.hidden,request=fetch,version=replayVersion,platform=()=>window.ShadowNative?'Android':navigator.standalone?'Home Screen':'Web',endpoint=null,enabled=!!endpoint,now=Date.now,setTimer=setTimeout,clearTimer=clearTimeout}={}){
+ let uploadGuard=()=>true;const optedIn=()=>enabled&&!!endpoint&&storage.getItem(OPT_IN)==='true';
+ let latest=null,timer=null,busy=false,closed=false,last=0,failures=0,lastError='';
  const sent=()=>{try{return JSON.parse(storage.getItem(SENT)||'null')}catch{return null}};
  const forgetSent=()=>storage.removeItem(SENT);
  const digest=async text=>hexOf(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text))));
@@ -76,14 +77,15 @@ export function createBackupClient({storage=localStorage,online=()=>navigator.on
  // Players who used the old backups get a code once, shown to them at the next start.
  function migrate(){if(optedIn()&&!code())assignCode('migrated');return code()}
  async function post(op,body){
-  if(!base){const config=await request('multiplayer-config.json',{signal:AbortSignal.timeout(10000)}).then(r=>{if(!r.ok)throw Error('Cloud save is unavailable right now.');return r.json()});base=config.signalingUrl.replace(/\/$/,'')+'/backup/'}
+  if(!enabled||!endpoint)throw Error(cloudUnavailable);
+  const base=endpoint.replace(/\/$/,'')+'/backup/';
   // text/plain keeps these simple CORS requests (no OPTIONS preflight); the Worker reads the raw body.
   return request(base+op,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify(body),signal:AbortSignal.timeout(op==='save'||op==='load'?30000:15000)});
  }
  async function forgetLegacy(){const old=legacy();if(!old)return;const r=await post('forget',{code:old.code,token:old.token});if(r.ok||r.status===404)storage.removeItem(LEGACY)}
  function schedule(delay=30000){if(!enabled||!optedIn()||closed||!latest||timer!==null)return;timer=setTimer(()=>{timer=null;void flush()},delay)}
  function collect(){const extras={};for(const k of EXTRAS){const v=storage.getItem(k);if(v!==null){JSON.parse(v);extras[k]=v}}return {schema:1,files:backupFiles(JSON.parse(latest)),extras,version,platform:platform()}}
- async function flush(){if(!enabled||!optedIn()||closed||busy||!latest)return;const paused=quotaPausedUntil('backup',{storage,now:now()});if(paused){schedule(Math.min(paused-now(),3600000));return}if(!online()||!visible()||!uploadGuard()){schedule(30000);return;}const elapsed=now()-last;if(last&&elapsed<30000){schedule(30000-elapsed);return}busy=true;const queued=latest;try{
+ async function flush(){if(!optedIn()||closed||busy||!latest)return;const paused=quotaPausedUntil('backup',{storage,now:now()});if(paused){schedule(Math.min(paused-now(),3600000));return}if(!online()||!visible()||!uploadGuard()){schedule(30000);return;}const elapsed=now()-last;if(last&&elapsed<30000){schedule(30000-elapsed);return}busy=true;const queued=latest;try{
   const backup=collect();if(!worthSaving(backup.files))return;const text=JSON.stringify(backup),current=migrate(),hash=await digest(backupFingerprint(backup)),previous=sent();if(previous?.code===current&&previous.hash===hash){if(latest===queued)latest=null;return;}if(new TextEncoder().encode(text).length>15*1024*1024)throw Error('Backup too large');
   const {id,auth}=await cloudKeys(current),blob=await sealSave(current,backup);
   if(!optedIn()||closed||!uploadGuard()||code()!==current)return;last=now();const r=await post('save',{id,auth,blob});
@@ -97,7 +99,7 @@ export function createBackupClient({storage=localStorage,online=()=>navigator.on
  return {
   isEnabled:optedIn,
   // Turning cloud save on creates this device's code (kept if it is turned off and on again).
-  setEnabled(value){storage.setItem(OPT_IN,value?'true':'false');if(value)return code()||assignCode('');latest=null;clearTimer(timer);timer=null;return code()},
+  setEnabled(value){if(!enabled||!endpoint)throw Error(cloudUnavailable);storage.setItem(OPT_IN,value?'true':'false');if(value)return code()||assignCode('');latest=null;clearTimer(timer);timer=null;return code()},
   code,migrate,
   notice(){return optedIn()&&code()?storage.getItem(NOTICE)||'':''},clearNotice(){storage.removeItem(NOTICE)},
   setUploadGuard(fn){uploadGuard=fn;},
@@ -107,9 +109,10 @@ export function createBackupClient({storage=localStorage,online=()=>navigator.on
   // clear is in the cloud even if the player goes straight on to loop or closes the game. A failed try keeps the
   // usual retries.
   saveNow(){clearTimer(timer);timer=null;last=0;return flush()},
-  status(){return {code:optedIn()?code():null,updatedAt:state().updatedAt,error:lastError}},
+  status(){return {code:optedIn()?code():null,updatedAt:optedIn()?state().updatedAt:undefined,error:lastError}},
   // Download and decrypt the save for a code; nothing on this device changes until the player confirms.
   async fetchSave(text){
+   if(!enabled||!endpoint)throw Error(cloudUnavailable);
    const normal=normalizeCloudCode(text);if(!normal)throw Error('Enter your 10-character cloud save code, like K7QXM-4TB9R.');
    const {id,auth}=await cloudKeys(normal);const r=await post('load',{id,auth});
    if(r.status===404)throw Error('No cloud save matches this code. Check it and try again.');if(!r.ok)throw Error('Cloud save is unavailable right now. Try again later.');
@@ -117,8 +120,9 @@ export function createBackupClient({storage=localStorage,online=()=>navigator.on
    return {code:normal,savedAt,recovery,summary:saveSummary(backup)};
   },
   // After a restore this device keeps backing up to the same code.
-  adopt(text){const normal=normalizeCloudCode(text);if(!normal)throw Error('Invalid cloud save code.');storage.setItem(CODE,normal);storage.setItem(OPT_IN,'true');storage.removeItem(NOTICE);storage.removeItem(STATE);forgetSent()},
+  adopt(text){if(!enabled||!endpoint)throw Error(cloudUnavailable);const normal=normalizeCloudCode(text);if(!normal)throw Error('Invalid cloud save code.');storage.setItem(CODE,normal);storage.setItem(OPT_IN,'true');storage.removeItem(NOTICE);storage.removeItem(STATE);forgetSent()},
   async deleteCloud(){
+   if(!enabled||!endpoint)throw Error(cloudUnavailable);
    const current=code();if(!current)return false;const {id,auth}=await cloudKeys(current),r=await post('delete',{id,auth});
    if(!r.ok&&r.status!==404)throw Error('Cloud save is unavailable right now. Try again later.');
    storage.setItem(OPT_IN,'false');storage.removeItem(CODE);storage.removeItem(STATE);storage.removeItem(NOTICE);forgetSent();latest=null;clearTimer(timer);timer=null;return true;

@@ -4,7 +4,7 @@ import {validEmote,showDuelEmote,clearDuelEmotes} from './duel-emotes.js';
 import {storeReplay,saveRecording,captureBehaviour,uploadBehaviour,sendUnsentFlags} from './replays.js';
 import {TagPeer} from './tag-peer.js';
 import {TagDuel} from './tag-duel.js';
-import {replayVersion} from './replay-version.js';
+import {edisonBuild} from './replay-version.js';
 import {isDuelAdmin,isRunAdmin,showAdminText} from './room-admin.js';
 const encode=value=>JSON.parse(JSON.stringify(value,(_,v)=>typeof v==='bigint'?{__bigint:String(v)}:v));
 export const decode=value=>{if(value&&typeof value==='object'){if(Object.keys(value).length===1&&'__bigint'in value)return BigInt(value.__bigint);for(const key of Object.keys(value))value[key]=decode(value[key])}return value};
@@ -26,8 +26,9 @@ const hex=bytes=>Array.from(new Uint8Array(bytes),n=>n.toString(16).padStart(2,'
 // of date. A hello without one comes from v0.2.35 or older.
 const versionParts=v=>String(v||'').split('.').map(n=>parseInt(n,10)||0);
 const compareVersions=(a,b)=>{const x=versionParts(a),y=versionParts(b);for(let i=0;i<Math.max(x.length,y.length);i++)if((x[i]||0)!==(y[i]||0))return (x[i]||0)-(y[i]||0);return 0};
-export function mismatchMessage(partnerBuild,ownBuild=replayVersion){
+export function mismatchMessage(partnerBuild,ownBuild=edisonBuild){
  if(!partnerBuild)return `Your partner's game is out of date. They need to update to v${ownBuild}: reload the page, or install the latest app.`;
+ if(String(partnerBuild).endsWith('-edison')!==String(ownBuild).endsWith('-edison'))return 'This room requires Rogue Duelist: Edison on both devices.';
  const order=compareVersions(partnerBuild,ownBuild);
  if(order<0)return `Your partner's game is out of date (v${partnerBuild}). They need to update to v${ownBuild}: reload the page, or install the latest app.`;
  if(order>0)return `Your game is out of date (v${ownBuild}). Your partner has v${partnerBuild}: reload the page, or install the latest app.`;
@@ -87,7 +88,7 @@ export class TagSession {
    this.onStatus(state,detail);
   }
  }
- async greeting(answer=false){return {kind:'hello',answer,sleeve:this.sleeve,character:this.character,variant:this.variant,profile:this.profile,version:PROTOCOL,build:replayVersion,contentHash:await this.contentHash,duel:{key:this.duelKey,applied:this.log.length}}}
+ async greeting(answer=false){return {kind:'hello',answer,sleeve:this.sleeve,character:this.character,variant:this.variant,profile:this.profile,version:PROTOCOL,build:edisonBuild,contentHash:await this.contentHash,duel:{key:this.duelKey,applied:this.log.length}}}
  async receive(message){
   if(message.kind==='partner-left-ack'){if(message.id===this.exitNotice?.id)this.exitNotice.resolve();return}
   if(message.kind==='partner-left'){
@@ -99,7 +100,7 @@ export class TagSession {
   if(message.kind==='hello'){
    // The partner's card sleeve (sleeves.js), checked against the profile they sent; a cosmetic, never stored.
    this.partnerSleeve=partnerSleeve(this.content,message);
-   if(message.version!==PROTOCOL||message.contentHash!==await this.contentHash)throw Error(mismatchMessage(message.build));
+   if(message.version!==PROTOCOL||message.build!==edisonBuild||message.contentHash!==await this.contentHash)throw Error(mismatchMessage(message.build));
    // A socket can die without the hub or the partner noticing, so only the returning side says hello. The answer goes
    // first: this client's view must not overtake the handshake it is waiting for.
    if(message.answer&&this.connected)return;

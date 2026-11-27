@@ -18,7 +18,9 @@ public final class MainActivity extends Activity {
     private volatile EdisonRelease.Update startupUpdate;
     private boolean startupUpdateHandled;
     private static final int SAVE_DECK_IMAGE = 4102;
+    private static final int SAVE_GAME_BACKUP = 4104;
     private byte[] pendingDeckImage;
+    private byte[] pendingGameBackup;
     private static final int PICK_FILE = 4103;
     private ValueCallback<Uri[]> pendingFiles;
     private void exportNotice(String text) { runOnUiThread(() -> android.widget.Toast.makeText(this,text,android.widget.Toast.LENGTH_LONG).show()); }
@@ -30,19 +32,23 @@ public final class MainActivity extends Activity {
             if(callback!=null)callback.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(result,data));
             return;
         }
-        if(request!=SAVE_DECK_IMAGE)return;
+        if(request!=SAVE_DECK_IMAGE && request!=SAVE_GAME_BACKUP)return;
+        final boolean backup=request==SAVE_GAME_BACKUP;
         final byte[] bytes;
-        synchronized(this){bytes=pendingDeckImage;pendingDeckImage=null;}
+        synchronized(this){
+            if(backup){bytes=pendingGameBackup;pendingGameBackup=null;}
+            else{bytes=pendingDeckImage;pendingDeckImage=null;}
+        }
         if(result!=RESULT_OK || data==null || data.getData()==null || bytes==null)return;
         final Uri uri=data.getData();
         new Thread(() -> {
             try(OutputStream out=getContentResolver().openOutputStream(uri,"wt")) {
                 if(out==null)throw new IOException("No output stream");
-                out.write(bytes);out.flush();exportNotice("Image saved.");
-            }catch(IOException | SecurityException e){exportNotice("Could not save the image. Please try again.");}
-        },"Deck-image-export").start();
+                out.write(bytes);out.flush();exportNotice(backup?"Save backup exported.":"Image saved.");
+            }catch(IOException | SecurityException e){exportNotice(backup?"Could not export the save backup. Please try again.":"Could not save the image. Please try again.");}
+        },"Document-export").start();
     }
-    @Override protected void onDestroy(){dismissStartupUpdate();synchronized(this){pendingDeckImage=null;}if(web!=null){web.removeJavascriptInterface("ShadowNative");web.stopLoading();web.destroy();web=null;}super.onDestroy();}
+    @Override protected void onDestroy(){dismissStartupUpdate();synchronized(this){pendingDeckImage=null;pendingGameBackup=null;}if(web!=null){web.removeJavascriptInterface("ShadowNative");web.stopLoading();web.destroy();web=null;}super.onDestroy();}
 
     private static final String HOST = "appassets.androidplatform.net";
     private static boolean bundled(Uri uri) {
@@ -85,7 +91,9 @@ public final class MainActivity extends Activity {
             @Override public WebResourceResponse shouldInterceptRequest(WebView w, WebResourceRequest r) {
                 Uri uri=r.getUrl(); String path=uri.getPath();
                 try {
-                    if (!HOST.equals(uri.getHost()) && "https".equals(uri.getScheme())) return null;
+                    if ("https".equals(uri.getScheme()) && uri.getUserInfo()==null &&
+                        (uri.getPort()==-1 || uri.getPort()==443) &&
+                        ("guylfe-game-feedback.netlify.app".equals(uri.getHost()) || "api.github.com".equals(uri.getHost()))) return null;
                     if (!bundled(uri) || path==null || path.contains("..") || path.contains("\\")) throw new IOException("Blocked");
                     path=path.substring(1); if(path.isEmpty()) path="index.html";
                     String ext=path.substring(path.lastIndexOf('.')+1).toLowerCase(Locale.ROOT);
@@ -256,6 +264,28 @@ public final class MainActivity extends Activity {
         private final AtomicFile file = new AtomicFile(new File(getFilesDir(), "campaign.json"));
         @JavascriptInterface public synchronized String load() {
             try { return new String(file.readFully(), StandardCharsets.UTF_8); } catch(IOException e) { return "{}"; }
+        }
+        @JavascriptInterface public synchronized boolean exportSave() {
+            final byte[] bytes;
+            try { bytes=file.readFully(); }
+            catch(IOException e) { return false; }
+            synchronized(MainActivity.this){
+                if(pendingGameBackup!=null)return false;
+                pendingGameBackup=bytes;
+            }
+            runOnUiThread(() -> {
+                try {
+                    android.content.Intent intent=new android.content.Intent(android.content.Intent.ACTION_CREATE_DOCUMENT);
+                    intent.addCategory(android.content.Intent.CATEGORY_OPENABLE);
+                    intent.setType("application/json");
+                    intent.putExtra(android.content.Intent.EXTRA_TITLE,"Rogue-Duelist-Edison-save-backup.json");
+                    startActivityForResult(intent,SAVE_GAME_BACKUP);
+                } catch(android.content.ActivityNotFoundException | SecurityException e) {
+                    synchronized(MainActivity.this){pendingGameBackup=null;}
+                    exportNotice("No app is available to export the save backup.");
+                }
+            });
+            return true;
         }
         @JavascriptInterface public synchronized boolean store(String data) {
             if(data==null || data.length()>16000000) return false;

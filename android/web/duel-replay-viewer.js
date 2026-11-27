@@ -3,7 +3,7 @@
 import {CPUViewer} from './cpu-viewer.js';
 import {loadDuelResources} from './engine.js';
 import {MobileDuel} from './duel.js';
-import {replayVersion} from './replay-version.js';
+import {replayVersion,edisonBuild} from './replay-version.js';
 import {relicArtwork,relicImage} from './ui-art.js';
 import {curseIconFile,curseStacks,curseCountBadge} from './experience-ui.js';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -27,7 +27,7 @@ export class ReplayViewer extends CPUViewer{
  modifiers(){try{const info=JSON.parse(String(this.record.start?.[8]||'').match(/SHADOW_RUN_AI (\{.*\})/)[1]);return {relics:[...new Set(info.activeRelics?.[0]||[])].filter(id=>this.content.artifacts?.[id]),curses:curseStacks(info.activeCurses).filter(({key})=>this.content.curses?.[key])}}catch{return {relics:[],curses:[]}}}
  modifiersMarkup(){const {relics,curses}=this.modifiers();if(!relics.length&&!curses.length)return '';return `<div class="replay-modifiers" aria-label="Relics and curses in this duel">${relics.map(id=>`<button data-cpu="relic" data-id="${esc(id)}" aria-label="${esc(this.content.artifacts[id][0])}">${relicArtwork(relicImage(this.content.artifactInfo[id].art))}</button>`).join('')}${curses.map(({key,count})=>`<button class="replay-curse" data-cpu="curse" data-id="${esc(key)}" aria-label="${esc(this.content.curses[key][0])}"><img src="${curseIconFile(key)}" alt="">${curseCountBadge(count)}</button>`).join('')}</div>`}
  done(){return !!this.state?.finished||this.decisions.length>=this.responses.length}
- fail(error){this.paused=true;this.error=this.record.build&&this.record.build!==replayVersion?`This duel was recorded in v${this.record.build} and cannot be fully replayed in v${replayVersion}.`:'Replay stopped: '+error.message;}
+ fail(error){this.paused=true;this.error=this.record.build&&![replayVersion,edisonBuild].includes(this.record.build)?`This duel was recorded in v${this.record.build} and cannot be fully replayed in v${replayVersion}.`:'Replay stopped: '+error.message;}
  applyDecision(saved){const response=structuredClone(saved);this.decisions.push(response);this.state=this.engine.respond(response);this.capture();}
  schedule(){clearTimeout(this.timer);if(!this.paused&&!this.done()&&this.engine&&!this.error)this.timer=setTimeout(()=>this.step(),this.speed);}
  step(){if(!this.engine||this.done()||this.error)return;try{this.applyDecision(this.responses[this.decisions.length])}catch(error){this.fail(error)}if(this.done())this.paused=true;this.render();this.schedule();}

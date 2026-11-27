@@ -1,3 +1,4 @@
+import {roomService} from './edison-services.js';
 import {quotaExhausted,pauseForQuota,clearQuotaPause} from './quota-pause.js';
 export class DeviceSync{
  constructor(backend){this.backend=backend;this.queue=Promise.resolve()}
@@ -8,9 +9,9 @@ export class DeviceSync{
   if(op==='status')return {linked:!!local.link.group};
   if(op==='sync'&&!local.link.group)return {linked:false};
   if(op==='join'&&local.link.group)throw Error('Disconnect this device before joining a different link. Existing unlocks will be kept.');
-  const config=await fetch('multiplayer-config.json').then(r=>r.json());
+  const endpoint=roomService();
   // text/plain: a simple CORS request with no OPTIONS preflight; the Worker reads the raw body.
-  const response=await fetch(config.signalingUrl.replace(/\/$/,'')+'/progress/'+op,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({...local.link,code:code?.toUpperCase().replace(/[\s-]/g,''),progress:local.progress}),signal:AbortSignal.timeout(15000)});
+  const response=await fetch(endpoint+'/progress/'+op,{method:'POST',headers:{'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify({...local.link,code:code?.toUpperCase().replace(/[\s-]/g,''),progress:local.progress}),signal:AbortSignal.timeout(15000)});
   const result=await response.json().catch(()=>({}));if(!response.ok){if(quotaExhausted(response.status,result.error,result))pauseForQuota('progress');throw Error(result.error||'Could not sync. Try again.')}clearQuotaPause('progress');
   if(result.group)await this.backend('device-sync-link',{group:result.group,token:result.token});
   if(JSON.stringify(local.progress)!==JSON.stringify(result.progress))await this.backend('device-sync-merge',result.progress);

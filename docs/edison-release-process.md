@@ -18,3 +18,11 @@ Publish the verified web build directory to the existing Edison Netlify site aft
 Players send suggestions from **Playtest note** during a solo run, or from **Options** in a duel. The client saves each queued note on the device and retries with its original report ID. An HTTP 200 receipt must match the game, report ID and `playtest-feedback/<report-id>.json` before the client marks it sent. Reports already marked sent in an older build stay in local history. Drafts opened in an old browser flow stay available for manual submission.
 
 Each suggestion is a separate JSON file in the private feedback intake. Follow the [maintenance commands in the feedback service](https://github.com/guylfe/game-feedback-service#retrieve-and-remove-suggestions). After implementing and verifying a suggestion, run `node manage-feedback.mjs implemented edison REPORT_ID CHECKOUT` from the service checkout to remove the stored suggestion and the exported local copy. Keep pending and partially implemented suggestions in intake. Record the report ID with the verification evidence so the team can identify the exact file to remove.
+
+## Independent game services
+
+Edison uses a numeric display and update version from the generated `replay-version.js`. Its tag handshake, new replay journals and new playtest notes identify the build as `VERSION-edison`. Preserve the numeric Android version, app ID, signing key, hosted origin and web save database when publishing.
+
+Tag Duels, Draft Duels, Ultimate Collector and its leaderboard, Cloud Save, Link Devices, replay uploads, behaviour flags and worldwide statistics are unavailable. Solo play, local replay playback, Device Stats and private playtest notes stay available. Players can move progress using a save file from Android's **Devices & App** settings or the web app's backup controls. Old cloud codes and queued reports stay on the device. The release packages only the reserved IDs for retired Collector opponents. Previously saved routes can still use their frozen decks.
+
+Keep the upstream Workers, former room URL overrides and old Collector roster refresh out of Edison releases. The shared packaging step refuses an upstream Worker hostname. Any future Edison service deployment needs Edison-owned endpoints, an independent state store, and separate verification of that service before client release.

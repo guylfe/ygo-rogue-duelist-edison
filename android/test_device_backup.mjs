@@ -5,7 +5,6 @@ const {createBackupClient,validateRecovery,restoreRecovery,newCloudCode,normaliz
 const server=new Map(),seen=[];const hash=async t=>Buffer.from(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(t))).toString('hex');
 let time=100000,connected=true,fail=false,timers=new Map(),next=0;
 async function worker(url,options){
- if(url==='multiplayer-config.json')return Response.json({signalingUrl:'https://approved.example'});
  const op=url.split('/').at(-1),body=JSON.parse(options.body);seen.push({op,body});if(fail)throw Error('network');
  if(op==='forget')return Response.json({forgotten:true});
  const row=server.get(body.id),owned=row&&row.authHash===await hash(body.auth);
@@ -14,7 +13,7 @@ async function worker(url,options){
  if(op==='load')return Response.json({savedAt:row.at,blob:row.blob});
  if(op==='delete'){server.delete(body.id);return Response.json({deleted:true})}
 }
-const options={storage:localStorage,enabled:true,online:()=>connected,visible:()=>true,platform:()=>'test',version:'test',now:()=>time,setTimer:(f,ms)=>{timers.set(++next,{f,ms});return next},clearTimer:id=>timers.delete(id),request:worker};
+const options={storage:localStorage,endpoint:'https://approved.example',enabled:true,online:()=>connected,visible:()=>true,platform:()=>'test',version:'test',now:()=>time,setTimer:(f,ms)=>{timers.set(++next,{f,ms});return next},clearTimer:id=>timers.delete(id),request:worker};
 const client=createBackupClient(options);
 const uploads=()=>seen.filter(x=>x.op==='save');
 

@@ -1,10 +1,10 @@
 // Local lifetime counters are never uploaded. Network statistics contain increments only.
-const endpoint='https://ygo-rogue-stats.hadow--un--esktop.workers.dev/v2/stats';
+import {statsService} from './edison-services.js';
 const CONSENT='ygo-usage-stats-enabled',key='ygo-global-stats-v1',queueKey='ygo-stats-batches-v2';
 const fields=['runs','duels','wins','losses','seconds','firstTimePlayers'];
 const empty=()=>Object.fromEntries(fields.map(k=>[k,0]));
 const read=k=>{try{return JSON.parse(localStorage.getItem(k)||'null')}catch{return null}};
-export const statsEnabled=()=>localStorage.getItem(CONSENT)!=='false';
+export const statsEnabled=()=>false;
 let controller=null,saved=read(key);
 if(!saved?.counts||!Array.isArray(saved.seen))saved={counts:empty(),seen:[]};
 // Preserve personal counters and event deduplication, but discard the old network identity.
@@ -58,10 +58,10 @@ async function syncBatch(){
  const batch=queue.batch;busy=true;
  controller=new AbortController();const timer=setTimeout(()=>controller?.abort(),8000);
  // text/plain keeps the upload a CORS simple request, so it costs no OPTIONS preflight.
- try{const r=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(batch),signal:controller.signal});if(!r.ok)throw Error('Stats unavailable');if(queue.batch===batch){queue.batch=null;storeQueue();}}catch{}finally{clearTimeout(timer);controller=null;busy=false}
+ try{const r=await fetch(statsService(),{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(batch),signal:controller.signal});if(!r.ok)throw Error('Stats unavailable');if(queue.batch===batch){queue.batch=null;storeQueue();}}catch{}finally{clearTimeout(timer);controller=null;busy=false}
 }
 export function personalPlaySeconds(){refreshPersonal();return Math.max(0,Number(saved.counts.seconds)||0)}
-export async function fetchStats(){const r=await fetch(endpoint,{signal:AbortSignal.timeout(10000),cache:'no-store'});if(!r.ok)throw Error('Global stats are temporarily unavailable.');return r.json()}
+export async function fetchStats(){const r=await fetch(statsService(),{signal:AbortSignal.timeout(10000),cache:'no-store'});if(!r.ok)throw Error('Global stats are temporarily unavailable.');return r.json()}
 export function startStats(isActive){
  active=isActive;if(started)return;started=true;store();
  document.addEventListener('game-startup-ready',event=>{if(event.detail?.newDevice&&!local)void withQueue(()=>{if(localStorage.getItem('ygo-first-launch-counted-v2'))return;localStorage.setItem('ygo-first-launch-counted-v2','true');if(statsEnabled()){queue.pending.firstTimePlayers=1;storeQueue();}});},{once:true});

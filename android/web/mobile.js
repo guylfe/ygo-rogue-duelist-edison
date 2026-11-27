@@ -3,7 +3,8 @@ import {CARD_BACK,allSleeves,sleevePayload,chosenSleeve,chosenSleeveImage,sleeve
 import {activeEffectsMarkup,changesStats} from './active-effects.js';
 import {loadingTip} from './loading-tips.js';
 import {relicEyeIcon} from './relic-eye-icon.js';
-import {replayVersion} from './replay-version.js';
+import {replayVersion,edisonBuild} from './replay-version.js';
+import {roomService,roomsUnavailable,cloudUnavailable,replaysUnavailable,statsUnavailable} from './edison-services.js';
 import {loadEngineData} from './engine.js';
 import {frameLevelName,deckCardMarkup,modifiedCard,deckStats,attributeOrder,misprintNoticeLine,bossStatCurses,bossCurseNote} from './feedback-ui.js';
 import {iconChoices,iconChoiceGrid} from './type-attribute-icons.js';
@@ -48,8 +49,7 @@ import {installAmbientClock} from './ambient-clock.js';
 import {play3DToss} from './toss-3d.js';
 import {playWheelSpin,coinCallLabel,isCoinCall} from './time-wizard-wheel.js';
 
-import {deviceBackup,validateRecovery,restoreRecovery,recoveryFromFile} from './device-backup.js';
-import {cloudSettingsMarkup,cloudCodeMarkup,cloudRestoreMarkup,cloudFoundMarkup,cloudFirstBootMarkup,copyCloudCode,saveCloudCode} from './cloud-save-ui.js';
+import {validateRecovery,restoreRecovery,recoveryFromFile} from './device-backup.js';
 
 import {characterEntrance,cancelCharacterEntrance} from './character-entrance.js';
 
@@ -58,7 +58,6 @@ import {compactLifeBursts} from './lp-cue-burst.js';
 
 import {configureCounterAudio,stopCounterAudio,purchaseCoins,stopPurchaseCoins} from './counter-audio.js';
 
-import {remindReplayUpload} from './replay-upload-reminder.js';
 
 import {polishDuel,polishShop,duelFinish} from './presentation-polish.js';
 import {coinLabel} from './coin-label.js';
@@ -72,7 +71,6 @@ import {mountRunCard,copyRunCard,saveRunCard,runCardName} from './run-card.js';
 import {fitButtonLabels} from './label-fit.js';
 import {bountyBanner} from './bounty-banner.js';
 import {activationBlock,SET_TURN_TEXT} from './activation-reasons.js';
-import {explainOnlineError} from './online-status.js';
 import {mountRunProgress} from './run-progress.js';
 import {coinScorecardMarkup} from './coin-scorecard.js';
 import {pendingRelicChoice,relicOfferMarkup,weightPickMarkup,cardPick,cardPickMarkup,cardPickResults,namePick,namePickMarkup,namePickResults} from './choice-relics-ui.js';
@@ -94,8 +92,6 @@ import {encounterCard,swordsIcon,bossBanner,bossControls,bossRerollPrice,playEnc
 
 import {playLegendarySummon} from './legendary-summon.js';
 
-import {DeviceSync} from './device-sync.js';
-import {quotaPausedUntil} from './quota-pause.js';
 // Cloud save that cannot upload says so on the main menu (Discord, 2026-11-16: a player on a browser that clears its data
 // lost hours of progress while the servers were at their daily limit).
 // Windows app (user, 2026-11-19): launchers from before the self-updater (no ShadowDesktop.launcherBuild) can't install
@@ -106,12 +102,6 @@ function launcherNotice(){
  const desktop=window.ShadowDesktop;if(!desktop||'launcherBuild' in desktop||launcherNoticeClosed)return '';
  return `<div class="launcher-notice" role="status"><b>New Windows app available</b><span>Download the installer again and run it. Your saves are kept, and from then on the app updates itself.</span><input class="launcher-link" readonly value="${WINDOWS_SETUP_URL}" aria-label="Download link"><span class="launcher-actions">${btn('Copy download link','launcher-copy')}${btn('Later','launcher-later')}</span><small class="launcher-status"></small></div>`;
 }
-function cloudSaveNotice(){
- try{if(!deviceBackup.isEnabled())return '';const paused=quotaPausedUntil('backup'),error=deviceBackup.status().error;
-  if(!paused&&!error)return '';
-  return `<small class="cloud-save-notice" role="status">${esc(paused?"Cloud save is paused: the online servers are at today's limit. Your progress is saved on this device only for now.":'Cloud save could not upload. Your progress is saved on this device; it will retry.')}</small>`}catch{return ''}
-}
-
 import {showNetStatus,hideNetStatus} from './net-status.js';
 import {collectorResponseOverlay,automaticChainResponse,chainWindowAllowed,liveCardFacts,waitForTossStart,mandatoryChainResponse,forcedCancelResponse,revealInPick,relicTriggerIndex} from './duel-presentation.js';
 import {smartContext} from './smart_policy.js';
@@ -138,7 +128,6 @@ import {rankFor,isRandomId} from './collector-rules.js';
 
 import {CollectorUI} from './collector-ui.js';
 
-import {COLLECTOR_MENU_CARD} from './collector-roster.js';
 
 import {collectorIntroduction,collectorIntroductionMarkup} from './collector-introduction.js';
 
@@ -154,10 +143,10 @@ import {motionPreferences,wallMs,attributeColor,activationColor,cardFlight,landi
 import {createDuelSounds,duelSoundPath} from './duel-sfx.js';
 
 import {VISUAL_EFFECTS,effectOn,applyEffectOptions} from './effect-options.js';
-import {uploadReplays,replayRows,saveRecording,captureBehaviour,uploadBehaviour,sendUnsentFlags,runReplayIndex,loadReplay} from './replays.js';
+import {runReplayIndex,loadReplay} from './replays.js';
 import {ReplayViewer} from './duel-replay-viewer.js';
 
-import {recordStat,recordRunResult,startStats,fetchStats,observeTagStats,personalPlaySeconds,statsEnabled,setStatsEnabled} from './global-stats.js';
+import {recordStat,recordRunResult,startStats,observeTagStats,personalPlaySeconds} from './global-stats.js';
 
 import {isShopUltra,announceShopUltra} from './shop-ultra.js';
 import {playRelicFusion} from './relic-fusion-fx.js';
@@ -271,14 +260,13 @@ const duelCancel=(label,action,extra='')=>duelDecision(label,action,extra,true);
 
 const cardButton=(id,extra='',active=false,mis=false)=>`<button class="cardbtn ${active?'selected':''}" data-preview="${id}" ${extra}>${mis?'<b class="misprint">MISPRINT</b>':''}<img draggable="false" loading="lazy" src="${image(id)}" alt="${esc(card(id)?.name||'Card')}"><span>${esc(card(id)?.name||'Card')}</span></button>`;
 
-const baseMenu=[['Online',14731897,'spell','Tag Duels · Draft Duels · Ultimate Collector','online'],['Continue',30834988,'trap','Return to your saved journey.','continue'],['New Run',71625222,'effect','Choose a duelist. Draft a new beginning.','characters'],['Cosmetics',38033121,'effect','Duel Looks and card sleeves.','cosmetics'],['Settings',23171610,'spell','Adjust audio, visuals, gameplay, and data-sharing settings.','settings'],['Watch CPU duel',28566710,'trap','Observe and test two opponent AIs.','cpu'],['Collection',75500286,'spell','Every card, booster and relic.','collection'],['Stats',67048711,'spell','Your device, worldwide and character records.','stats'],['Achievements',32012841,'normal','Your feats and lifetime progress.','achievements'],['Tutorial',91595718,'spell','Learn the field, shops and controls.','tutorial']];
-const onlineMenu=[['Tag Duels',81332143,'spell','Team up across Android and web.','tag'],['Draft Duels',3549275,'effect','Draft relics and boosters between duels. Challenge a friend.','draft-pvp'],COLLECTOR_MENU_CARD,['Main Menu',71625222,'trap','Return to the main menu.','main-menu']];
+const baseMenu=[['Online',14731897,'spell','Online play is unavailable in this build.','online'],['Continue',30834988,'trap','Return to your saved journey.','continue'],['New Run',71625222,'effect','Choose a duelist. Draft a new beginning.','characters'],['Cosmetics',38033121,'effect','Duel Looks and card sleeves.','cosmetics'],['Settings',23171610,'spell','Adjust audio, visuals, gameplay and saved data.','settings'],['Watch CPU duel',28566710,'trap','Observe and test two opponent AIs.','cpu'],['Collection',75500286,'spell','Every card, booster and relic.','collection'],['Stats',67048711,'spell','View your device records.','stats'],['Achievements',32012841,'normal','Your feats and lifetime progress.','achievements'],['Tutorial',91595718,'spell','Learn the field, shops and controls.','tutorial']];
 
 
 
 // A broken card or relic script otherwise just does nothing. Say so once per duel, so it gets flagged.
 const scriptErrorsShown=new WeakMap();
-MobileDuel.onScriptError=(text,duel)=>{if(!/\.lua"?\]?:\d+:|attempt to /.test(String(text))||scriptErrorsShown.get(duel)===duel.presentationDuel)return;scriptErrorsShown.set(duel,duel.presentationDuel);toast('A card effect ran into an error and may not have worked. Please report it with Options → Flag behaviour.')};
+MobileDuel.onScriptError=(text,duel)=>{if(!/\.lua"?\]?:\d+:|attempt to /.test(String(text))||scriptErrorsShown.get(duel)===duel.presentationDuel)return;scriptErrorsShown.set(duel,duel.presentationDuel);toast('A card effect ran into an error and may not have worked. Use Options → Playtest note to report what happened.')};
 function toast(text,{replace=false}={}){
 
  const raw=String(text??''),validation=raw.match(/(?:ValueError|AssertionError): ([^\n]+)/g);
@@ -301,7 +289,7 @@ function showToast(){if(toastBusy||!toastQueue.length)return;toastBusy=true;cons
 
 let lastPersistedData=null;
 
-async function persist(cloudCheckpoint=false){const files={};for(const name of py.FS.readdir('/game/saves'))if(name.endsWith('.json')||name.endsWith('.bak'))files[name]=py.FS.readFile('/game/saves/'+name,{encoding:'utf8'});const data=JSON.stringify(files);if(data===lastPersistedData){if(cloudCheckpoint)deviceBackup.queue(data);return;}if(window.ShadowNative){if(!await ShadowNative.store(data))throw Error('Could not save game to device storage.')}else localStorage.setItem('shadow-run-mobile',data);lastPersistedData=data;if(cloudCheckpoint)deviceBackup.queue(data)}
+async function persist(){const files={};for(const name of py.FS.readdir('/game/saves'))if(name.endsWith('.json')||name.endsWith('.bak'))files[name]=py.FS.readFile('/game/saves/'+name,{encoding:'utf8'});const data=JSON.stringify(files);if(data===lastPersistedData)return;if(window.ShadowNative){if(!await ShadowNative.store(data))throw Error('Could not save game to device storage.')}else localStorage.setItem('shadow-run-mobile',data);lastPersistedData=data}
 
 let commandQueue=Promise.resolve();
 
@@ -310,7 +298,7 @@ async function fetchRandomCards(){py.globals.set('request_json',JSON.stringify({
 
 function command(action,value){const payload=JSON.stringify({action,value});const job=commandQueue.then(()=>executeCommand(payload));commandQueue=job.catch(()=>{});return job}
 
-async function executeCommand(payload){const statsRequest=JSON.parse(payload),statsDuel=state?.run?.duel?.id;py.globals.set('request_json',payload);const result=JSON.parse(await py.runPythonAsync('mobile_backend.dispatch(request_json)'));if(['reward-progress','pack-inspect','card-sources','cpu-catalog','draft-duel-setup','draft-random-cards'].includes(statsRequest.action))return result.result;const sleevesBefore=state?.profile?new Set(state.profile.sleeves_earned||[]):null;state=applyCommandUpdate(state,result,statsRequest.action);if(await syncRandomCards(state?.randomCards,fetchRandomCards))drawInBackground(state?.run?.pool||[]);warmLocalizedCards(state?.run?.pool);announceSleeves(sleevesBefore,statsRequest.action);if(lesson){lesson.saved={...state,run:lesson.saved.run};state={...state,run:lesson.run}}loadFavouritePacks(state?.settings?.favoritePacks);noteDeviceSyncChange(statsRequest.action);if(result.persist!==false&&statsRequest.action!=='device-sync-read')await persist(statsRequest.action==='finish');if(statsRequest.action==='finish'&&state?.run?.stage==='complete')void deviceBackup.saveNow();if(['new','secret-champion','secret-relicless'].includes(statsRequest.action))recordStat('runs',result.run?.started_at||result.run?.history_id);if(statsRequest.action==='begin')recordStat('duels',result.run?.duel?.id);if(statsRequest.action==='finish')resetDraftFilters(false);if(statsRequest.action==='finish'&&statsDuel){recordStat('duels',statsDuel);recordStat(statsRequest.value.winner===0?'wins':'losses',statsDuel);recordRunResult(result.run);}return result.result}
+async function executeCommand(payload){const statsRequest=JSON.parse(payload),statsDuel=state?.run?.duel?.id;py.globals.set('request_json',payload);const result=JSON.parse(await py.runPythonAsync('mobile_backend.dispatch(request_json)'));if(['reward-progress','pack-inspect','card-sources','cpu-catalog','draft-duel-setup','draft-random-cards'].includes(statsRequest.action))return result.result;const sleevesBefore=state?.profile?new Set(state.profile.sleeves_earned||[]):null;state=applyCommandUpdate(state,result,statsRequest.action);if(await syncRandomCards(state?.randomCards,fetchRandomCards))drawInBackground(state?.run?.pool||[]);warmLocalizedCards(state?.run?.pool);announceSleeves(sleevesBefore,statsRequest.action);if(lesson){lesson.saved={...state,run:lesson.saved.run};state={...state,run:lesson.run}}loadFavouritePacks(state?.settings?.favoritePacks);if(result.persist!==false&&statsRequest.action!=='device-sync-read')await persist();if(['new','secret-champion','secret-relicless'].includes(statsRequest.action))recordStat('runs',result.run?.started_at||result.run?.history_id);if(statsRequest.action==='begin')recordStat('duels',result.run?.duel?.id);if(statsRequest.action==='finish')resetDraftFilters(false);if(statsRequest.action==='finish'&&statsDuel){recordStat('duels',statsDuel);recordStat(statsRequest.value.winner===0?'wins':'losses',statsDuel);recordRunResult(result.run);}return result.result}
 
 async function notices(){const list=state.profile.achievement_notices||[];if(list.length){await command('notices');list.forEach(n=>toast('Achievement complete: '+n.name+' — '+n.reward))}}
 
@@ -452,7 +440,7 @@ async function flushPlaytestNotes(){
  try{
   for(const draft of pendingPlaytestDrafts()){
    try{
-    const result=await postPlaytest(draft,replayVersion);
+    const result=await postPlaytest(draft,edisonBuild);
     if(result.retryAt){playtestRetryAt=result.retryAt;break}
     if(result.pending)continue;
     const current=loadPlaytestDrafts().find(item=>item.id===draft.id);
@@ -486,7 +474,7 @@ function recordPlaytestScene(){
 function capturePlaytestDraft(){
  recordPlaytestScene();
  const r=state.run,inDuel=screen==='duel';
- return newPlaytestDraft({Version:replayVersion,Screen:playtestScenes[screen],Act:r.act,
+ return newPlaytestDraft({Version:edisonBuild,Screen:playtestScenes[screen],Act:r.act,
   Character:character()?.name,Encounter:Number.isInteger(r.round)?r.round+1:null,
   Opponent:inDuel?content.characters[r.opponent]?.name:null,Turn:inDuel&&snapshot?.turn>0?snapshot.turn:null},
   [...(inDuel?engine?.logs||[]:[]),...playtestSceneLog]);
@@ -528,7 +516,7 @@ function playtestNoteAction(action){
  if(!draft.note.trim()){status.textContent='Write a note before sending.';return}
  const current=loadPlaytestDrafts().find(item=>item.id===draft.id);
  if(current&&playtestSent(current)){refreshPlaytestStatus(current);return}
- const queued={...draft,queued:true,fileRejected:false,submittedBuild:draft.submittedBuild||Object.fromEntries(draft.details).Version||replayVersion};
+ const queued={...draft,queued:true,fileRejected:false,submittedBuild:draft.submittedBuild||Object.fromEntries(draft.details).Version||edisonBuild};
  if(!savePlaytestDraft(queued)){status.textContent='Could not save this draft on the device.';return}
  refreshPlaytestStatus(queued);
  void flushPlaytestNotes();
@@ -878,7 +866,7 @@ window.addEventListener('edison-update-available',renderEdisonStartupUpdate);
 
 function go(name){if(name==='routes'&&state.run?.reward_slots?.pending){if(rewardDeckReturn)go(postDuelScreen());return;}if(rewardDeckReturn&&!['draft','shop','ending'].includes(name))rewardDeckReturn=false;if(name!=='duel'){clearTimeout(heldChainTimer);heldChainTimer=0;heldChainPointer=null;heldAlwaysChain=false;heldChainPrompt=null;}cancelCharacterEntrance();if(name!=='ending')clearShadowVictory();clearDuelEmotes();flushDraftTap();if(name!=='shop')keeperTalk.hush();if(name!=='shop'||screen!=='shop'){cancelShopkeeperShrink();shopkeeperSmall=false;resetShopkeeperRightClicks()}const pendingRewards=['shop','ending','act_transition'].includes(name)&&state.run?.reward_slots?.pending;if(pendingRewards)rewardMusic=true;if(name!==screen)previousScreen=screen;screen=name;syncBackgroundAnimations();render();if(name==='shop')settleViewport();if(['draft','shop'].includes(name)&&(state.run?.artifacts.includes('dna_rewrite')&&!state.run.monster_type||pendingRelicChoice(state.run))&&!modal.open)void offerGoldenCards();if(pendingRewards){if(rewardDeckReturn){rewardDeckReturn=false;if(modal.querySelector('.reward-screen')){modal.showModal();rewardPresentation?.refresh()}else showRewardSlots()}else showVictoryReceipt()}}
 
-let menu=baseMenu,menuPage='main',menuPageEntry=null;
+let menu=baseMenu,menuPageEntry=null;
 
 // Start the title carousel on the saved-run action, regardless of menu order.
 
@@ -892,7 +880,7 @@ function closeGame(){
  try{window.close()}catch{}
  setTimeout(()=>{if(!window.closed)toast('Your progress is saved. Close this tab or window to quit.')},300);
 }
-function renderTitle(){void remindReplayUpload(()=>screen==='title');titleMotion?.destroy();const activeMenu=menuPageEntry||menu[menuIndex]?.[4];menuPageEntry=null;const hasSave=(state.slots||[]).some(s=>s.run);menu=menuPage==='online'?[...onlineMenu]:baseMenu.filter(m=>!['tutorial','achievements'].includes(m[4])&&(m[4]!=='cpu'||state.profile.cpu_viewer_unlocked)&&(m[4]!=='continue'||hasSave));if(menuPage==='main'&&state.profile.gallery_unlocked)menu.push(['Gallery',75500286,'spell','Under construction','gallery']);menuIndex=menu.findIndex(m=>m[4]===activeMenu);if(menuIndex<0)menuIndex=Math.max(0,menu.findIndex(m=>m[4]==='characters'));app.innerHTML=`<div class="title"><a class="discord-link" href="https://discord.gg/QD36Q3VG7F" target="_blank" rel="noopener noreferrer" aria-label="Join YGO Rogue Duelist on Discord" title="Discord"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M20.3 4.4a19.8 19.8 0 0 0-4.9-1.5l-.6 1.2a18.3 18.3 0 0 0-5.6 0l-.6-1.2a20 20 0 0 0-4.9 1.5C.6 9 .1 13.5.4 18a20 20 0 0 0 6 3l1.2-2a12 12 0 0 1-1.9-.9l.5-.4c3.8 1.8 7.9 1.8 11.6 0l.5.4-1.9.9 1.2 2a20 20 0 0 0 6-3c.4-5.2-.7-9.6-3.3-13.6ZM8.3 15.4c-1.1 0-2-1-2-2.3s.9-2.3 2-2.3 2 1 2 2.3-.9 2.3-2 2.3Zm7.4 0c-1.1 0-2-1-2-2.3s.9-2.3 2-2.3 2 1 2 2.3-.9 2.3-2 2.3Z"/></svg></a>${Array.from({length:24},(_,i)=>`<i class="particle" style="left:${i*4.2}%;animation-delay:-${i*.47}s;animation-duration:${6+i%5}s"></i>`).join('')}<button class="patch-notes-button" data-do="patch-notes" aria-label="Patch notes" title="Patch notes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.6 2H4.4Z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg></button><button class="language-button" data-do="language" aria-label="Language" title="Language">${flagSvg(currentLanguage())}</button><button class="close-game-button" data-do="close-game" aria-label="Close the game" title="Close the game">×</button><img class="game-logo" src="assets/rogue-duelist-logo.png" alt="Yu-Gi-Oh: Rogue Duelist"><div class="carousel">${menu.map((m,i)=>{let d=(i-menuIndex+menu.length)%menu.length;if(d>3)d-=menu.length;return `<button class="menu-card ${m[2]}" data-menu="${i}" data-distance="${Math.abs(d)}" style="--menu-offset:${d};left:${50+d*23}%;scale:${d?'.72':'1'};z-index:${10-Math.abs(d)};filter:${d?'brightness(.58)':'none'};animation-delay:-${i*.8}s" ${Math.abs(d)>2?'hidden':''}><h3 class="${m[0]==='Ultimate Collector'?'compact-menu-title':''}">${m[0]}</h3><div class="art"><img src="${m[4]==='gallery'?'assets/Meerkat.png':'assets/menu/'+m[1]+'.jpg'+(m[4]==='online'?'?v=unity-610':'')}"></div><p>${m[3]}</p></button>`}).join('')}</div><small class="title-version">v${esc(replayVersion)}</small>${cloudSaveNotice()}${launcherNotice()}<small style="padding-bottom:8px">Fan Experiment · EDOPro core · Progress saved on this device</small></div>`;titleMotion=mountMenuMotion(app.querySelector('.carousel'),menu.length,menuIndex,index=>{menuIndex=index});fitMenuTitles();void maybeShowNewPatchNotes(dialog,()=>screen==='title'&&!modal.open)}
+function renderTitle(){titleMotion?.destroy();const activeMenu=menuPageEntry||menu[menuIndex]?.[4];menuPageEntry=null;const hasSave=(state.slots||[]).some(s=>s.run);menu=baseMenu.filter(m=>!['tutorial','achievements'].includes(m[4])&&(m[4]!=='cpu'||state.profile.cpu_viewer_unlocked)&&(m[4]!=='continue'||hasSave));if(state.profile.gallery_unlocked)menu.push(['Gallery',75500286,'spell','Under construction','gallery']);menuIndex=menu.findIndex(m=>m[4]===activeMenu);if(menuIndex<0)menuIndex=Math.max(0,menu.findIndex(m=>m[4]==='characters'));app.innerHTML=`<div class="title"><a class="discord-link" href="https://discord.gg/QD36Q3VG7F" target="_blank" rel="noopener noreferrer" aria-label="Join YGO Rogue Duelist on Discord" title="Discord"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M20.3 4.4a19.8 19.8 0 0 0-4.9-1.5l-.6 1.2a18.3 18.3 0 0 0-5.6 0l-.6-1.2a20 20 0 0 0-4.9 1.5C.6 9 .1 13.5.4 18a20 20 0 0 0 6 3l1.2-2a12 12 0 0 1-1.9-.9l.5-.4c3.8 1.8 7.9 1.8 11.6 0l.5.4-1.9.9 1.2 2a20 20 0 0 0 6-3c.4-5.2-.7-9.6-3.3-13.6ZM8.3 15.4c-1.1 0-2-1-2-2.3s.9-2.3 2-2.3 2 1 2 2.3-.9 2.3-2 2.3Zm7.4 0c-1.1 0-2-1-2-2.3s.9-2.3 2-2.3 2 1 2 2.3-.9 2.3-2 2.3Z"/></svg></a>${Array.from({length:24},(_,i)=>`<i class="particle" style="left:${i*4.2}%;animation-delay:-${i*.47}s;animation-duration:${6+i%5}s"></i>`).join('')}<button class="patch-notes-button" data-do="patch-notes" aria-label="Patch notes" title="Patch notes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.6 2H4.4Z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg></button><button class="language-button" data-do="language" aria-label="Language" title="Language">${flagSvg(currentLanguage())}</button><button class="close-game-button" data-do="close-game" aria-label="Close the game" title="Close the game">×</button><img class="game-logo" src="assets/rogue-duelist-logo.png" alt="Yu-Gi-Oh: Rogue Duelist"><div class="carousel">${menu.map((m,i)=>{let d=(i-menuIndex+menu.length)%menu.length;if(d>3)d-=menu.length;return `<button class="menu-card ${m[2]}" data-menu="${i}" data-distance="${Math.abs(d)}" style="--menu-offset:${d};left:${50+d*23}%;scale:${d?'.72':'1'};z-index:${10-Math.abs(d)};filter:${d?'brightness(.58)':'none'};animation-delay:-${i*.8}s" ${Math.abs(d)>2?'hidden':''}><h3 class="${m[0]==='Ultimate Collector'?'compact-menu-title':''}">${m[0]}</h3><div class="art"><img src="${m[4]==='gallery'?'assets/Meerkat.png':'assets/menu/'+m[1]+'.jpg'+(m[4]==='online'?'?v=unity-610':'')}"></div><p>${m[3]}</p></button>`}).join('')}</div><small class="title-version">v${esc(replayVersion)}</small>${launcherNotice()}<small style="padding-bottom:8px">Fan Experiment · EDOPro core · Progress saved on this device</small></div>`;titleMotion=mountMenuMotion(app.querySelector('.carousel'),menu.length,menuIndex,index=>{menuIndex=index});fitMenuTitles();void maybeShowNewPatchNotes(dialog,()=>screen==='title'&&!modal.open)}
 // Menu card names stay on one line in every language: a name too long for its box gets a smaller font instead
 // (user, 2026-11-09). Runs after the translation pass and again once the card font has loaded or the window resizes.
 function fitMenuTitles(){
@@ -1335,14 +1323,8 @@ function renderRelics(){shell('Relics',`<div class="scroll cardgrid">${Object.en
 
 let collectionKind='cards',collectionQuery='',collectionPage=0,collectionType='All types',collectionAttribute='All attributes',collectionEffect='Any effect',collectionRegistration='All cards';
 
-let collectorLeaders=[];
-
-async function renderCollectorLeaderboard(){
-
- shell('Collection',`${collectionNavigation('collectors')}<p>Loading surviving duelists…</p>`);
-
- try{const config=await fetch('./multiplayer-config.json').then(r=>r.json());const response=await fetch(config.signalingUrl.replace(/\/$/,'')+'/v2/collector/leaderboard',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});if(!response.ok)throw Error('Leaderboard unavailable.');const result=await response.json();if(screen!=='collection'||collectionKind!=='collectors')return;collectorLeaders=result.leaderboard;shell('Collection',`${collectionNavigation('collectors')}<div class="scroll"><div class="collector-leader-grid">${collectorLeaders.map((d,i)=>{const c=content.characters[d.character],rank=rankFor(d.wins);return btn(`${c?`<img src="assets/${esc(c.sprite)}" alt="${esc(c.name)}">`:''}<span class="collector-rank">${esc(rank)}</span><span class="collector-slot-name">${i+1}. ${esc(d.name)}</span><small>${d.wins} wins</small>`,'collector-decklist',`data-index="${i}" data-rank="${rank.toLowerCase()}"`,'collector-slot')}).join('')||'<p>No surviving match winners yet.</p>'}</div></div>`);}catch(error){const reason=await explainOnlineError(error);if(screen==='collection')shell('Collection',`${collectionNavigation('collectors')}<p>${esc(reason)}</p>`);}
-
+function renderCollectorLeaderboard(){
+ shell('Collection',`${collectionNavigation('collectors')}<p>${esc(roomsUnavailable)}</p>`);
 }
 
 let collectionSort='Default';
@@ -1488,7 +1470,6 @@ function applyCompatibilityMode(){document.documentElement.classList.toggle('com
 
 document.addEventListener('change',async e=>{if(!e.target.matches('[data-compatibility-mode]'))return;state.settings.compatibilityMode=e.target.checked;applyCompatibilityMode();await command('settings',state.settings)});
 
-document.addEventListener('change',e=>{if(e.target.matches('[data-usage-stats]'))setStatsEnabled(e.target.checked)});
 
 document.addEventListener('change',async e=>{if(e.target.name==='duel-theme'){state.settings.duelTheme=e.target.value;applyDisplayOptions(state.settings)}if(e.target.id==='deck-columns'||e.target.name==='duel-theme')await command('settings',state.settings)});
 
@@ -1503,9 +1484,9 @@ function renderSettings(){
   // Language: the title screen's flag button and picker (user, 2026-11-08).
   display:`<h2>Display</h2><div class="set-row settings-language"><span class="set-text"><b>Language</b><small>Interface and card texts.</small></span><button class="settings-language-button" data-do="language" aria-label="Language" title="Language">${flagSvg(currentLanguage())}<span>${esc(LANGUAGES.find(([code])=>code===currentLanguage())?.[1]||'English')}</span></button></div>${displaySettings()}${duelBackgroundSetting()}${window.ShadowNative?'':settingToggle('Preload Game Assets','Load music, artwork and backgrounds at startup. Sound effects always preload.','data-preload-visuals',preloadVisualPreference()==='all')}`,
   // Saved Data lives in the Devices & App tab (2026-11-06).
-  saves:`<h3 class="saved-data-head">Saved Data</h3><p class="muted">Your progress is always saved on this device, and updating the app keeps it.</p><div class="set-group">${cloudSettingsMarkup({enabled:deviceBackup.isEnabled(),...deviceBackup.status()},btn,esc)}</div><details class="set-group"><summary>Other recovery options</summary><label class="set-file">Import a save file <input id="device-recovery-file" type="file" accept=".json,application/json"></label><p class="muted">A save backup exported from the browser version, or a recovery file from the admin.</p></details><details class="set-group settings-danger"><summary>Reset Progress</summary><p>Remove all saved progress on this device.</p>${btn('Delete All Progress','reset-progress','','danger')}${deviceBackup.status().code?`<p>Remove your cloud save from the server. Progress on this device stays.</p>${btn('Delete My Cloud Save','cloud-delete','','danger')}`:''}</details>`,
-  devices:`<h2>Devices &amp; App</h2><p class="muted">Link Devices shares unlocks, achievements, card sleeves and challenge levels between your devices.</p><div class="settings-actions">${window.ShadowNative?.openEdisonUpdate?btn('Check for Edison updates','edison-update'):''}${btn('Link Devices','device-sync-open')}${(playtestDraft||loadPlaytestDrafts().length)?playtestNoteButton():''}</div>`,
-  replays:`<h2>Replays &amp; Stats</h2><div class="set-row"><span class="set-text"><b>Duel Replays</b><small>Your latest 100 duels are kept on this device. Uploading them helps improve the CPU: decks, actions and results only, no account details.</small></span>${btn('Upload Replays','upload-replays')}</div><p id="replay-status" role="status" aria-live="polite"></p>${settingToggle('Share Global Statistics','Anonymous totals for Global Stats and Character Stats. No names or save files.','data-usage-stats',statsEnabled())}`,
+  saves:`<h3 class="saved-data-head">Saved Data</h3><p class="muted">${esc(cloudUnavailable)}</p><p class="muted">Updating the app keeps your progress.</p><div class="set-group settings-actions">${window.ShadowNative?.exportSave?btn('Export save backup','edison-export-save'):''}<label class="set-file">Import a save file <input id="device-recovery-file" type="file" accept=".json,application/json"></label></div><details class="set-group settings-danger"><summary>Reset Progress</summary><p>Remove all saved progress on this device.</p>${btn('Delete All Progress','reset-progress','','danger')}</details>`,
+  devices:`<h2>Devices &amp; App</h2><div class="settings-actions">${window.ShadowNative?.openEdisonUpdate?btn('Check for Edison updates','edison-update'):''}${(playtestDraft||loadPlaytestDrafts().length)?playtestNoteButton():''}</div>`,
+  replays:`<h2>Replays &amp; Stats</h2><p>${esc(replaysUnavailable)}</p><p>${esc(statsUnavailable)}</p>`,
   about:`<h2>About and Tutorial</h2><div class="settings-actions">${btn('Tutorial Duel','lesson-start')}${btn('How to Play','tutorial')}</div><p class="notice settings-about">Yu-Gi-Oh: Rogue Duelist · A private fan experiment.<br>Original game created and designed by Thronior.<br>Card and character artwork © Konami. Duel rules: Project Ignis / ocgcore-wasm.</p><details class="set-group settings-advanced"><summary>Advanced</summary><label for="cheat-code">Testing Code</label><div class="settings-code"><input id="cheat-code" placeholder="Enter code">${btn('Apply','cheat')}</div></details>`
  };
  panes.devices+=panes.saves;
@@ -2346,39 +2327,7 @@ function promptMarkup(m){if(promptHidden&&hiddenPrompt!==m){promptHidden=false;h
 
 function advancedMarkup(m){if(m.type===M.SELECT_COUNTER)return `${m.cards.map((c,i)=>`<label>${esc(engine.name(c.code))}: <input data-counter="${i}" type="number" min="0" max="${c.count}" value="0"></label>`).join('')}`;if(announcePrompt!==m){announcePrompt=m;announcePicks=new Set()}const kind=m.type===M.ANNOUNCE_RACE?'race':'attribute';return iconChoiceGrid(iconChoices(kind,content.cards,m.available,m.count),kind,x=>`data-do="announce-pick" data-announce="${x.bit}" aria-pressed="${announcePicks.has(x.bit)}"`)}
 
-let behaviourDraft=null,behaviourSending=false,behaviourSession=null;
 
-async function openBehaviourReport(capture=null){
-
- const session=capture?null:tagUI?.session;
-
- const draft={session,capture:capture||(session?null:captureBehaviour(engine?.replayRecord,{mode:'solo',seat:0,turn:snapshot?.turn,phase:snapshot?.phase}))};
-
- behaviourDraft=draft;behaviourSession=session;
-
- dialog('Flag behaviour',`<p>Describe what the CPU did and what you expected. The replay up to this moment is attached automatically.</p><label for="behaviour-description">What happened?</label><textarea id="behaviour-description" maxlength="2000" rows="5" placeholder="For example: the CPU tributed its stronger monster…"></textarea><p id="behaviour-status" role="status">${session?'Capturing replay…':''}</p>${btn('Send report','send-behaviour',session?'disabled':'')}${btn('Send unsent flags','send-unsent-flags')}`);
-
- if(session){try{const result=await session.request('flag-capture');draft.token=result.token;if(behaviourDraft===draft){const b=document.querySelector('[data-do="send-behaviour"]');if(b)b.disabled=false;const status=document.querySelector('#behaviour-status');if(status)status.textContent='Replay attached.';}}catch(e){const status=document.querySelector('#behaviour-status');if(status)status.textContent=e.message;}}
-
-}
-
-async function sendBehaviourReport(){
-
- if(behaviourSending||!behaviourDraft)return;
-
- const draft=behaviourDraft,field=document.querySelector('#behaviour-description'),status=document.querySelector('#behaviour-status'),button=document.querySelector('[data-do="send-behaviour"]');
-
- const description=field?.value.trim();if(!description){status.textContent='Please describe the behaviour first.';field.focus();return;}
-
- behaviourSending=true;button.disabled=true;status.textContent='Uploading report…';
-
- try{const result=draft.session?await draft.session.request('flag-submit',{token:draft.token,description}):await uploadBehaviour(draft.capture,description);if(behaviourDraft===draft){status.textContent=result.pending?`Flag saved ${draft.session?'on the host device':'offline'}. ${result.pending} unsent flag(s). Use Send unsent flags to retry. ${result.error||''}`:'Report sent. Thank you!';button.textContent=result.pending?'Saved':'Sent';field.disabled=true;behaviourDraft=null;}}
-
- catch(e){status.textContent=e.message;button.disabled=false;}
-
- finally{behaviourSending=false;}
-
-}
 
 function ensureFusionCue(owner,before,after){
  const oldPlayer=before?.players?.[0],newPlayer=after?.players?.[0];
@@ -2465,7 +2414,7 @@ setInterval(()=>{
  if(document.hidden||modal.open||inspectionPaused()||gap>2500){due.since=now;return}
  if(now-due.since<STALL_AFTER||stallOffered.get(engine)===engine.presentationDuel)return;
  stallOffered.set(engine,engine.presentationDuel);stallNote=`Detected automatically: the CPU made no move for 10 seconds (turn ${snapshot?.turn??'?'}, prompt ${engine.pending?.type??'none'}).`;
- dialog('The duel seems stuck',`<p>The CPU hasn't moved for 10 seconds. You can flag it with the replay attached, so it can be fixed, or keep waiting.</p>${btn('Flag behaviour','stall-flag','','primary')}${btn('Keep waiting','close')}`);
+ dialog('The duel seems stuck',`<p>The CPU hasn't moved for 10 seconds. You can send a playtest note about what happened or keep waiting.</p>${btn('Playtest note','stall-note','','primary')}${btn('Keep waiting','close')}`);
 },1000);
 let stallNote='';
 
@@ -2702,11 +2651,9 @@ async function action(a,el={dataset:{}},silent=false){
 
  if(a==='reward-overlay-close'){closeRewardOverlay();return;}
 
- if(a==='flag-behaviour')return openBehaviourReport();if(a==='stall-flag'){await openBehaviourReport();const box=document.querySelector('#behaviour-description');if(box&&!box.value)box.value=stallNote;return}
+ if(a==='stall-note'){openPlaytestNote(true);const box=modal.querySelector('#edison-playtest-note');if(box&&!box.value&&!box.readOnly){box.value=stallNote;box.dispatchEvent(new Event('input'));}return}
 
- if(a==='send-unsent-flags'){const status=document.querySelector('#behaviour-status');try{const result=behaviourSession?await behaviourSession.request('flag-retry'):await sendUnsentFlags();status.textContent=result.pending?`${result.sent} sent; ${result.pending} still saved for retry. ${result.error||''}`:`${result.sent} flag(s) sent. No unsent flags remain.`}catch(e){status.textContent=e.message}return;}
 
- if(a==='send-behaviour')return sendBehaviourReport();
 
  if(a==='duel-emotes'){if(screen!=='duel')return;if(tagUI){if(tagUI.session?.connected)openEmotePicker(emoji=>tagUI?.session.request('emote',emoji).catch(e=>toast(e.message)));}else openEmotePicker(emoji=>showDuelEmote(emoji,true));return;}
 
@@ -2719,7 +2666,7 @@ async function action(a,el={dataset:{}},silent=false){
  if(a==='characters'&&lessonShouldAsk()){dialog('Do you know how to play Yu-Gi-Oh?',`<p>If you are new to the card game, a short tutorial Duel teaches the phases, the kinds of cards and the basic plays.</p>${btn('Yes, start my run','lesson-yes','','primary')}${btn('No, teach me','lesson-no')}`);return}
  if(a==='duel-options'&&!tagUI)modal.dataset.duelOptionsPause='1';
 
- if(a==='duel-options'&&tagUI?.isCollector){dialog('Options',`<div class="duel-options-grid">${btn('Log','log')}${btn('Settings','duel-settings')}${btn('Exit','pause')}${btn('Surrender','surrender')}</div>`);return}if(a==='duel-options'){dialog('Options',`<div class="duel-options-grid">${btn('Relics','relic-ledger')}${btn('Curses','active-curses')}${btn('Log','log')}${btn('Coin bonuses','coin-bonuses')}${btn('Flag behaviour','flag-behaviour')}${canWritePlaytestNote()?playtestNoteButton():''}${btn('Settings','duel-settings')}${btn(tagUI?'Exit':'Save / Menu','pause')}${btn('Surrender','surrender')}</div>`);return}
+ if(a==='duel-options'&&tagUI?.isCollector){dialog('Options',`<div class="duel-options-grid">${btn('Log','log')}${btn('Settings','duel-settings')}${btn('Exit','pause')}${btn('Surrender','surrender')}</div>`);return}if(a==='duel-options'){dialog('Options',`<div class="duel-options-grid">${btn('Relics','relic-ledger')}${btn('Curses','active-curses')}${btn('Log','log')}${btn('Coin bonuses','coin-bonuses')}${canWritePlaytestNote()?playtestNoteButton():''}${btn('Settings','duel-settings')}${btn(tagUI?'Exit':'Save / Menu','pause')}${btn('Surrender','surrender')}</div>`);return}
 
  if(a==='duel-settings'){dialog('Settings',duelSettingsMarkup());return}
  if(a==='character-settings'){openCharacterSettings(selected);return}
@@ -2729,7 +2676,7 @@ async function action(a,el={dataset:{}},silent=false){
  if(a==='char-marks-back'){const i=+el.dataset.charIndex,from=charEditor?.from;charEditor=null;if(from==='duel'){duelSettingsTab='character';dialog('Settings',duelSettingsMarkup())}else openCharacterSettings(i);return}
  if(a==='duel-settings-tab'){duelSettingsTab=el.dataset.tab;const box=el.closest('.duel-settings');box.querySelectorAll('[data-do="duel-settings-tab"]').forEach(b=>{const on=b===el;b.classList.toggle('active',on);b.setAttribute('aria-selected',on)});box.querySelectorAll('.duel-set-pane').forEach(p=>p.hidden=p.dataset.pane!==duelSettingsTab);return}
 
-if(a==='defeated-collector-deck'){showDefeatedCollector(+el.dataset.index);return;}if(a==='collection-collector-back'){collectionKind='cards';renderCollection();return;}if(a==='collector-decklist'){const d=collectorLeaders[+el.dataset.index];if(d)dialog(d.name,Object.entries(d.deck).map(([zone,ids])=>`<h3>${esc(zone==='extra'?'Fusion':zone)}</h3><div class="cardgrid collector-decklist-grid">${ids.map(id=>`<button data-inspect="${id}"><img src="${image(id)}" alt="${esc(card(id)?.name)}"></button>`).join('')}</div>`).join(''));return;}if(a==='coin-bonuses'){await showCoinBonuses();return}if(a==='curse-info'){dialog(content.curses[el.dataset.curse]?.[0]||'Curse',curseInfoMarkup(content,el.dataset.curse,state.run?.challenge_level,+el.dataset.count||1));return}if(a==='cpu'){if(state.profile.cpu_viewer_unlocked)await openCPU();return}if(a==='tag'){await openTag();return}if(a==='draft-pvp'){await openCollector(true);return}if(a==='collector'){await openCollector();return}if(tagUI){if(a==='active-curses'){dialog(tagUI.isCollector?'Opponent relics':'Curses & LVL modifiers',modifierRowsMarkup(tagUI.view.modifiers));return}if(a==='pause'||a==='pause-title'||a==='title'){await tagUI.action('exit',{dataset:{}});return}if(a==='surrender'){dialog(tagUI.isCollector?'Surrender this duel?':'Surrender the team’s run?',tagUI.isCollector?`<p>This concedes the current duel. Your opponent gains one win in the best-of-three match.</p><div class="collector-surrender-actions">${duelConfirm('Confirm surrender','confirm-surrender')}${duelDecision('Cancel surrender','close','',true)}</div>`:duelConfirm('Confirm surrender','confirm-surrender'));return}if(a==='confirm-surrender'){modal.close();await tagUI.session.request('surrender');return}}if(busy&&!['close','toggle-chain','choose-monster-type','golden-card','relic-pick','relic-pick-reroll','weight-pick','card-pick-type','card-pick-select','card-pick-confirm','name-pick-select','name-pick-confirm','relic-ledger','relic-detail','active-curses','curse-info','surrender','confirm-surrender','resume-duel'].includes(a))return;if(!silent&&!['buy','close','select-purchase','shop-reroll','sell-relic'].includes(a)){if((screen==='shop'&&a==='draft')||(screen==='draft'&&a==='shop'))playUISound('window-close');else effect(['start','new','confirm-new'].includes(a));}
+if(a==='defeated-collector-deck'){showDefeatedCollector(+el.dataset.index);return;}if(a==='collection-collector-back'){collectionKind='cards';renderCollection();return;}if(a==='coin-bonuses'){await showCoinBonuses();return}if(a==='curse-info'){dialog(content.curses[el.dataset.curse]?.[0]||'Curse',curseInfoMarkup(content,el.dataset.curse,state.run?.challenge_level,+el.dataset.count||1));return}if(a==='cpu'){if(state.profile.cpu_viewer_unlocked)await openCPU();return}if(a==='tag'){await openTag();return}if(a==='draft-pvp'){await openCollector(true);return}if(a==='collector'){await openCollector();return}if(tagUI){if(a==='active-curses'){dialog(tagUI.isCollector?'Opponent relics':'Curses & LVL modifiers',modifierRowsMarkup(tagUI.view.modifiers));return}if(a==='pause'||a==='pause-title'||a==='title'){await tagUI.action('exit',{dataset:{}});return}if(a==='surrender'){dialog(tagUI.isCollector?'Surrender this duel?':'Surrender the team’s run?',tagUI.isCollector?`<p>This concedes the current duel. Your opponent gains one win in the best-of-three match.</p><div class="collector-surrender-actions">${duelConfirm('Confirm surrender','confirm-surrender')}${duelDecision('Cancel surrender','close','',true)}</div>`:duelConfirm('Confirm surrender','confirm-surrender'));return}if(a==='confirm-surrender'){modal.close();await tagUI.session.request('surrender');return}}if(busy&&!['close','toggle-chain','choose-monster-type','golden-card','relic-pick','relic-pick-reroll','weight-pick','card-pick-type','card-pick-select','card-pick-confirm','name-pick-select','name-pick-confirm','relic-ledger','relic-detail','active-curses','curse-info','surrender','confirm-surrender','resume-duel'].includes(a))return;if(!silent&&!['buy','close','select-purchase','shop-reroll','sell-relic'].includes(a)){if((screen==='shop'&&a==='draft')||(screen==='draft'&&a==='shop'))playUISound('window-close');else effect(['start','new','confirm-new'].includes(a));}
 
  if(a==='active-curses'){const rows=await command('active-curses');dialog('This duel: curses & difficulty',modifierRowsMarkup(rows));return}
 
@@ -2796,7 +2743,7 @@ if(a==='defeated-collector-deck'){showDefeatedCollector(+el.dataset.index);retur
 
  if(a==='import-profile-confirm'){const text=pendingDesktopProfile;if(!text)return;pendingDesktopProfile=null;const result=await command('import-profile',text);closeDialog();renderSettings();toast(`Progress imported: ${result.unlocksAdded} new unlocks, ${result.historyAdded} new history entries.`);return}
 
- if(a==='device-secret'){if(state.profile.cpu_viewer_unlocked||secretPlaying)return;if(++deviceSecretTaps===10){secretPlaying=true;try{await meerkatSecretAnimation();await command('unlock-cpu-viewer');toast('Watch CPU duel unlocked');}finally{secretPlaying=false;deviceSecretTaps=0;}}return;}if(a==='global-stats-retry'){renderGlobalStats();return}if(a==='device-stats-tab'){deviceStatsTab=el.dataset.tab;renderPersonalStats();return}if(a==='settings-tab'){settingsTab=el.dataset.tab;renderSettings();return}if(a==='character-stats-retry'){renderCharacterStats();return}
+ if(a==='device-secret'){if(state.profile.cpu_viewer_unlocked||secretPlaying)return;if(++deviceSecretTaps===10){secretPlaying=true;try{await meerkatSecretAnimation();await command('unlock-cpu-viewer');toast('Watch CPU duel unlocked');}finally{secretPlaying=false;deviceSecretTaps=0;}}return;}if(a==='device-stats-tab'){deviceStatsTab=el.dataset.tab;renderPersonalStats();return}if(a==='settings-tab'){settingsTab=el.dataset.tab;renderSettings();return}
 
  if(a==='reset-progress'){dialog('Delete all progress?',`<p>Your run, achievements and all unlocks will be erased.</p>${btn('Continue to final confirmation','reset-progress-confirm')}`);return}
 
@@ -2817,35 +2764,13 @@ if(a==='defeated-collector-deck'){showDefeatedCollector(+el.dataset.index);retur
 
  if(a==='golden-card'){if(tagUI)await tagUI.session.request('golden-card',+el.dataset.code);else await command('golden-card',+el.dataset.code);delete modal.dataset.goldenRequired;modal.classList.remove('golden-choice-modal');modal.close();return}
 
- if(a==='upload-replays'){const button=document.querySelector('[data-do="upload-replays"]'),status=document.querySelector('#replay-status');button.disabled=true;try{if(engine)await saveRecording(engine);await uploadReplays(text=>{status.textContent=text})}catch(e){status.textContent=e.message}finally{button.disabled=false}return}
-
- if(a==='device-sync-open'){await showDeviceSync();return;}
-
- if(a==='cloud-code-show'){showCloudCode('Your cloud save code:');return}
-
- if(a==='cloud-copy-code'||a==='cloud-save-code-file'){const code=deviceBackup.status().code,status=modal.querySelector('.cloud-code-status');if(!code)return;try{const text=a==='cloud-copy-code'?await copyCloudCode(code):await saveCloudCode(code);if(status)status.textContent=text}catch(error){if(status)status.textContent=error.message}return}
-
- if(a==='cloud-restore-open'){localStorage.setItem(CLOUD_ASKED,'true');dialog('Restore from code',cloudRestoreMarkup(btn));modal.querySelector('#cloud-restore-code')?.focus();return}
-
- if(a==='cloud-restore-find'){if(el.disabled)return;const status=modal.querySelector('.cloud-restore-status');el.disabled=true;status.classList.add('muted');status.textContent='Looking for your save…';try{cloudRestore=await deviceBackup.fetchSave(modal.querySelector('#cloud-restore-code')?.value);dialog('Restore from code',cloudFoundMarkup(cloudRestore,btn,esc))}catch(error){if(status.isConnected){status.classList.remove('muted');status.textContent=error.message}}finally{el.disabled=false}return}
-
- if(a==='cloud-restore-confirm'){const found=cloudRestore;if(!found||el.disabled)return;el.disabled=true;deviceBackup.destroy();try{await restoreRecovery(found.recovery,{loadSave:loadDeviceSave,storeSave:storeDeviceSave});deviceBackup.adopt(found.code);location.reload()}catch(error){deviceBackup.resume();dialog('Restore from code',`<p>${esc(error.message)}</p>`)}return}
-
- if(a==='cloud-first-on'){localStorage.setItem(CLOUD_ASKED,'true');deviceBackup.setEnabled(true);showCloudCode('Cloud save is on. Your code:');return}
-
- if(a==='cloud-first-later'){localStorage.setItem(CLOUD_ASKED,'true');closeDialog();return}
-
- if(a==='cloud-delete'){if(el.disabled||!confirm('Delete your cloud save? It is removed from the server and your code stops working. Progress on this device stays.'))return;el.disabled=true;try{await deviceBackup.deleteCloud();renderSettings();toast('Cloud save deleted.')}catch(error){dialog('Cloud save',`<p>${esc(error.message)}</p>`)}finally{el.disabled=false}return}
-
- if(a==='device-sync-create'||a==='device-sync-join'||a==='device-sync-now'||a==='device-sync-unlink'){
-
- if(el.disabled)return;const code=document.getElementById('device-link-code')?.value;el.disabled=true;
-
- try{const result=await deviceSync.run({'device-sync-create':'create','device-sync-join':'join','device-sync-now':'sync','device-sync-unlink':'unlink'}[a],code);await showDeviceSync(result.code?`<p>Enter this code on your other device:</p><p class="device-link-code">${esc(result.code)}</p><p>Expires in 10 minutes. Each code can be used once.</p>`:a==='device-sync-unlink'?'<p>Device disconnected. Your unlocks have been kept.</p>':'<p>Unlocks synced.</p>')}catch(error){dialog('Link devices',`<p>${esc(error.message)}</p>${btn('Try again','device-sync-open')}`)}finally{el.disabled=false}return;
-
+ if(a==='edison-export-save'&&window.ShadowNative?.exportSave){
+  try{await persist();if(!window.ShadowNative.exportSave())throw Error('Could not open the save backup picker.');}
+  catch(error){toast(error.message)}
+  return;
  }
 
- if(a==='edison-update'&&window.ShadowNative?.openEdisonUpdate){await persist();window.ShadowNative.openEdisonUpdate();return}
+  if(a==='edison-update'&&window.ShadowNative?.openEdisonUpdate){await persist();window.ShadowNative.openEdisonUpdate();return}
  if(a==='edison-startup-download'||a==='edison-startup-later'){
   const native=window.ShadowNative?.getEdisonStartupUpdate?.();
   const web=window.EdisonWebUpdate;
@@ -2919,7 +2844,7 @@ if(a==='defeated-collector-deck'){showDefeatedCollector(+el.dataset.index);retur
 
  if(a==='relic-ledger'){if(modal.open&&modal.querySelector('.reward-screen'))showRewardOverlay('Run relics',relicLedgerMarkup(null,false,true));else dialog('Run relics',relicLedgerMarkup());return}
 
- if(a==='online'){menuPage='online';menuPageEntry='tag';menuIndex=0;render();return;}if(a==='main-menu'){menuPage='main';menuPageEntry='continue';menuIndex=baseMenu.findIndex(m=>m[4]==='continue');render();return;}
+ if(a==='online'){dialog('Online',`<p>${esc(roomsUnavailable)}</p>`);return;}
  if(['title','characters','routes','draft','shop','achievements','relics','collection','stats','cosmetics'].includes(a))go(a);
 
 }
@@ -3049,8 +2974,8 @@ async function boot(){try{
  // Finisher voice lines play from their downloaded files (juice.js), so they skip the up-front decode.
  document.querySelector('#loading-status').textContent='Step 6 of 6 · Preparing sound effects…';await preloadSoundEffects(effects.filter(path=>!/\/(?:kill-[a-z]+|you-lose)\.wav$/.test(path)));
 
- screen='title';render();await notices();document.dispatchEvent(new CustomEvent('game-startup-ready',{detail:{newDevice:Object.keys(saved).length===0}}));if(!new URLSearchParams(location.search).has('desktop'))cloudStartup(Object.keys(saved).length===0);firefoxNotice();if(new URLSearchParams(location.search).has('desktop')){if(new URLSearchParams(location.search).get('mode')==='cpu')await openCPU();else await openTag();}
- startDeviceSync();clearRetry();
+ screen='title';render();await notices();document.dispatchEvent(new CustomEvent('game-startup-ready',{detail:{newDevice:Object.keys(saved).length===0}}));firefoxNotice();if(new URLSearchParams(location.search).has('desktop')){if(new URLSearchParams(location.search).get('mode')==='cpu')await openCPU();else await openTag();}
+ clearRetry();
 
  window.shadowTest={command,state:()=>state,collector:()=>tagUI?.isCollector?tagUI:null,engine:()=>engine,screen:()=>screen,go,startDuel,respond};
 
@@ -3076,7 +3001,7 @@ let tagCloudPhase=null;
 
 let tagUI=null,tagOffline=null,tagDuelQueue=Promise.resolve(),tagFinalePlayed=false;
 // A screen entrance plays when this key changes; online screens count their phase, tab and view.
-mountMenuFeel(app,root=>screen==='tag'?['tag',tagUI?.mode??tagUI?.view?.phase,tagUI?.tab,root.classList[0],root.querySelector(':scope>:is(section,div):not(.tag-status,.game-vector-background)')?.classList[0]].join(':'):screen==='title'?'title:'+menuPage:screen);
+mountMenuFeel(app,root=>screen==='tag'?['tag',tagUI?.mode??tagUI?.view?.phase,tagUI?.tab,root.classList[0],root.querySelector(':scope>:is(section,div):not(.tag-status,.game-vector-background)')?.classList[0]].join(':'):screen);
 
 const desktopToken=new URLSearchParams(location.search).get('desktop');
 
@@ -3099,10 +3024,11 @@ if(desktopToken)setTimeout(()=>reportDesktopLayout(),0);
 window.addEventListener('resize',()=>{if(desktopToken)reportDesktopLayout();if(desktopToken&&tagUI&&screen==='duel')desktopRPC('native-layout',(app.querySelector('header')?.getBoundingClientRect().bottom||0)/innerHeight).catch(console.error)});
 
 async function openCollector(draftMode=false){
+ try{roomService()}catch(error){dialog('Online',`<p>${esc(error.message)}</p>`);return;}
 
  if(tagUI)return;tagOffline=state;screen='tag';tagDuelQueue=Promise.resolve();
 
- const owner=new (draftMode?DraftUI:CollectorUI)({sleeve:()=>sleevePayload(state.settings,state.profile,content),root:app,content:draftMode?multiplayerContent():content,profile:state.profile,backend:command,image,inspect,inspectPack,dialog,openPacks:presentPacks,getSlots:()=>state.slots,onResult:won=>track(won?'victory':'defeat'),onCheckpoint:()=>persist(true),
+ const owner=new (draftMode?DraftUI:CollectorUI)({sleeve:()=>sleevePayload(state.settings,state.profile,content),root:app,content:draftMode?multiplayerContent():content,profile:state.profile,backend:command,image,inspect,inspectPack,dialog,openPacks:presentPacks,getSlots:()=>state.slots,onResult:won=>track(won?'victory':'defeat'),onCheckpoint:()=>persist(),
  // Draft Random Pack cards (2026-11-16): added to the card tables, the duel engine and the background drawing.
  randomCards:{add:addDraftRandomCards,prepare:prepareEngine,draw:drawInBackground},
 
@@ -3121,6 +3047,7 @@ async function openCollector(draftMode=false){
 }
 
 async function openTag(){
+ try{roomService()}catch(error){dialog('Online',`<p>${esc(error.message)}</p>`);return;}
 
  tagCloudPhase=null;
 
@@ -3130,7 +3057,7 @@ async function openTag(){
 
  tagUI=new TagUI({onRunMark:keepRunMark,randomCards:{add:addDraftRandomCards,prepare:prepareEngine,draw:drawInBackground},sleeve:()=>chosenSleeve(state.settings,state.profile,content),sound:duelSound,tickSound:slotTickSound,stopTick:()=>slotTick.pause(),root:app,content:multiplayerContent(),profile:state.profile,backend:desktopToken?desktopRPC:command,image,inspect,inspectPack,dialog,showRewards:showVictoryReceipt,showScorecard:()=>action('scorecard'),openPacks:presentPacks,onGoldenCards:offerGoldenCards,
 
- onView:view=>{sendSavedTagMarks(view);const duelEnded=tagCloudPhase==='duel'&&view.phase!=='duel';tagCloudPhase=view.phase;if(duelEnded)void command('tag-profile',view.profile).then(()=>persist(true)).catch(error=>console.warn('Post-duel backup:',error.message));observeTagStats(view);state={...state,run:view.run,profile:view.profile};rewardPresentation?.refresh();track(view.phase==='duel'?(summonMusic.get(engine)||(view.duel?.mode==='pvp'?'champion':((view.run.round||0)+1)%3===0?'boss':'duel')):view.phase==='shop'?'shop':view.phase==='complete'?'victory':view.phase==='gameover'?'defeat':view.phase==='draft'?'draft':'characters');if(view.phase!=='duel'){document.querySelectorAll('.float-lp,.float-coins,.victory-settlement,.moving-card,.attack-beam,.duel-cue,.coin-toss,.dice-toss').forEach(el=>el.remove());screen='tag';engine=null;snapshot=null;if(desktopToken)desktopRPC('native-stop').catch(console.error)}},
+ onView:view=>{sendSavedTagMarks(view);const duelEnded=tagCloudPhase==='duel'&&view.phase!=='duel';tagCloudPhase=view.phase;if(duelEnded)void command('tag-profile',view.profile).then(()=>persist()).catch(error=>console.warn('Post-duel save:',error.message));observeTagStats(view);state={...state,run:view.run,profile:view.profile};rewardPresentation?.refresh();track(view.phase==='duel'?(summonMusic.get(engine)||(view.duel?.mode==='pvp'?'champion':((view.run.round||0)+1)%3===0?'boss':'duel')):view.phase==='shop'?'shop':view.phase==='complete'?'victory':view.phase==='gameover'?'defeat':view.phase==='draft'?'draft':'characters');if(view.phase!=='duel'){document.querySelectorAll('.float-lp,.float-coins,.victory-settlement,.moving-card,.attack-beam,.duel-cue,.coin-toss,.dice-toss').forEach(el=>el.remove());screen='tag';engine=null;snapshot=null;if(desktopToken)desktopRPC('native-stop').catch(console.error)}},
 
  onDuel:(s,cues)=>{tagDuelQueue=tagDuelQueue.then(async()=>{if(!s.finished)tagFinalePlayed=false;await showTagDuel(s,cues);if(isCardWin(s.finished)&&!tagFinalePlayed){tagFinalePlayed=true;clearTimeout(aiTimer);removeActions();if(modal.open)modal.close();await playCardWin(s.finished)}}).catch(error=>toast(error.message));return tagDuelQueue;},
 
@@ -3251,7 +3178,7 @@ const replayKey=(started,character,loop,duel)=>[started,character,loop,duel].joi
 function runReplayStrip(r){if(r.mode==='tag'||!r.timeline?.length)return '';return `<div class="run-replays" data-run-started="${esc(r.started_at)}" data-run-character="${r.character}">${r.timeline.map(x=>{const c=content.characters[x.opponent];return `<button class="run-replay ${x.won?'won':'lost'}" data-do="watch-replay" data-key="${esc(replayKey(r.started_at,r.character,x.loop,x.duel))}" disabled aria-label="${esc(c?.name||'Opponent')}, duel ${x.duel}: no replay"><img loading="lazy" src="assets/${esc(c?.sprite)}" alt=""><span>${x.loop>1?'L'+x.loop+' · ':''}${x.duel}</span></button>`}).join('')}<small class="run-replay-note">Replays of your last 100 duels can be watched. Older ones are deleted automatically.</small></div>`}
 async function markRunReplays(){let rows;try{rows=await runReplayIndex()}catch{return}const keys=new Map(rows.map(x=>[replayKey(x.meta.started_at,x.meta.character,x.meta.loop,x.meta.duel),x.id]));for(const b of document.querySelectorAll('.run-replay[data-key]')){const id=keys.get(b.dataset.key);if(!id)continue;b.disabled=false;b.dataset.replay=id;b.classList.add('available');b.setAttribute('aria-label',b.getAttribute('aria-label').replace(': no replay',': watch replay'))}}
 async function watchReplay(id){const record=await loadReplay(id).catch(()=>null),meta=(await runReplayIndex()).find(x=>x.id===id)?.meta;if(!record||!meta){toast('This replay is no longer available.');return}
- screen='cpu';clearTimeout(aiTimer);track('duel');cpuViewer=new ReplayViewer({root:app,content,inspect,dialog,record,characters:[meta.character,meta.opponent],onFlag:(duel,context)=>openBehaviourReport(captureBehaviour(duel,context)),onExit:async()=>{cpuViewer=null;collectionKind='history';go('collection')}});}
+ screen='cpu';clearTimeout(aiTimer);track('duel');cpuViewer=new ReplayViewer({root:app,content,inspect,dialog,record,characters:[meta.character,meta.opponent],onExit:async()=>{cpuViewer=null;collectionKind='history';go('collection')}});}
 // Run progress (run-progress.js) on the opponent and shop screens between duels.
 function mountRunStrip(){mountRunProgress(app.querySelector('.page'),state.run,{content,dialog},{shop:screen==='shop'})}
 function runTimelineMarkup(r){return `<section class="run-timeline"><h3>Run timeline</h3>${(r.timeline||[]).map(x=>`<span class="${x.won?'won':'lost'}">${x.loop>1?'Loop '+x.loop+' · ':''}Duel ${x.duel}: ${esc(content.characters[x.opponent]?.name)} — ${x.won?'Win':'Loss'} · ${x.lp_after_healing.toLocaleString()} LP</span>`).join('')||'<p>Detailed timeline is available for duels played after this update.</p>'}</section>`}
@@ -3337,59 +3264,10 @@ startStats(()=>!cpuViewer&&!lesson&&!['loading','title','settings','cosmetics','
 
 const statsSince=date=>date?`<p>Since ${esc(new Date(date).toLocaleDateString())}</p>`:'';
 
-// Character Stats: every player's finished runs, one row per character, wins / losses per challenge level.
-async function renderCharacterStats(){
- shell('Stats',`${statsNavigation('characters')}<div class="scroll character-stats" id="character-stats-panel"><p>Loading worldwide results…</p></div>`);
- const panel=document.querySelector('#character-stats-panel'),levels=[-1,0,1,2,3,4,5,6];
- try{const s=await fetchStats();if(!panel.isConnected)return;const results=s.results||{},count=(i,l,k)=>Number(results[`${i}:${l}:${k}`])||0;
-  // Cells are shaded red to green by win rate; a single run only tints faintly, so small samples don't shout.
-  const shade=(w,l)=>{const n=w+l,rate=w/n;return `background:hsla(${Math.round(rate*120)},55%,42%,${(Math.min(1,n/10)*.35+.06).toFixed(2)})`};
-  const pct=(w,l)=>w+l?Math.round(100*w/(w+l))+'%':'–';
-  // Most played characters first.
-  const played=i=>levels.reduce((n,l)=>n+count(i,l,'w')+count(i,l,'l'),0);
-  const rows=[...(content.playable||[])].sort((a,b)=>played(b)-played(a)).map(i=>{let tw=0,tl=0;const cells=levels.map(l=>{const w=count(i,l,'w'),lost=count(i,l,'l');tw+=w;tl+=lost;return w||lost?`<td data-v="${w/(w+lost)}" data-n="${w+lost}" style="${shade(w,lost)}" title="${pct(w,lost)} win rate"><span class="cs-w" title="Wins">${w}</span><span class="cs-sep">/</span><span class="cs-l" title="Losses">${lost}</span></td>`:'<td class="cs-none">–</td>'}).join('');
-   return `<tr data-name="${esc(content.characters[i]?.name||'')}"><th scope="row">${esc(content.characters[i]?.name||'?')}</th>${cells}<td class="cs-rate" ${tw+tl?`data-v="${tw/(tw+tl)}" data-n="${tw+tl}" style="${shade(tw,tl)}"`:''}>${pct(tw,tl)}<small>${tw+tl?`${tw+tl} ${tw+tl===1?'run':'runs'}`:''}</small></td></tr>`}).join('');
-  panel.innerHTML=`${statsSince(s.resultsSince)}${statsSearch('characters','Search characters')}<div class="character-stats-wrap"><table class="character-stats-table"><thead><tr><th scope="col">Character</th>${levels.map(l=>`<th scope="col">Lvl ${l}</th>`).join('')}<th scope="col">Win rate</th></tr></thead><tbody>${rows}</tbody></table></div><p class="stats-no-match" hidden>No matching characters.</p>`;sortableStats(panel,'characters');
- }catch(error){const reason=await explainOnlineError(error);if(panel.isConnected)panel.innerHTML=`<p>${esc(reason)}</p>${btn('Retry','character-stats-retry')}`}
-}
-
-async function renderGlobalStats(){
-
- shell('Stats',`${statsNavigation('global')}<div class="scroll" id="global-stats-panel"><p>Loading worldwide totals…</p></div>`);
-
- const panel=document.querySelector('#global-stats-panel');
-
- try{const s=await fetchStats();if(!panel.isConnected)return;panel.innerHTML=`${statsSince(s.since)}<div class="global-stats-grid">${[['Total Players',s.firstTimePlayers ?? s.devices],['Runs started',s.runs],['Duels started',s.duels],['Duels won',s.wins],['Duels lost',s.losses],['Active play hours',(s.seconds/3600).toFixed(1)]].map(([label,value])=>`<section class="panel" ${label==='Total Players'?'data-do="device-secret" role="button" tabindex="0" aria-label="Total Players"':''}><h2>${esc(Number(value).toLocaleString())}</h2><p>${label}</p></section>`).join('')}</div>${relicStatsMarkup(s.results||{})}`;const relics=panel.querySelector('.relic-stats');if(relics)sortableStats(relics,'relics')}catch(error){const reason=await explainOnlineError(error);if(panel.isConnected)panel.innerHTML=`<p>${esc(reason)}</p>${btn('Retry','global-stats-retry')}`}
-
-}
-
-
-
-// Finished solo runs per relic held at the end ("r:relic:w|l"), most played first. Retired relics are left out.
-function relicStatsMarkup(results){
- const tally=new Map();for(const [k,n] of Object.entries(results)){const m=/^r:([a-z0-9_]+):([wl])$/.exec(k);if(!m||!content.artifacts[m[1]]||(content.retiredArtifacts||[]).includes(m[1]))continue;const t=tally.get(m[1])||{id:m[1],w:0,l:0};t[m[2]]+=Number(n)||0;tally.set(m[1],t)}
- const rows=[...tally.values()].sort((a,b)=>b.w+b.l-(a.w+a.l)||b.w-a.w);if(!rows.length)return '';
- const table=(title,list)=>list.length?`<div class="stats-group"><h2>${title}</h2><div class="character-stats-wrap"><table class="character-stats-table relic-stats-table"><thead><tr><th scope="col">Relic</th><th scope="col">Runs</th><th scope="col">Won</th><th scope="col">Win rate</th></tr></thead><tbody>${list.map(t=>{const n=t.w+t.l,rate=t.w/n;return `<tr data-name="${esc(content.artifacts[t.id][0])}"><th scope="row"><button type="button" class="relic-stats-name" data-do="stats-relic" data-relic="${esc(t.id)}" aria-label="Inspect ${esc(content.artifacts[t.id][0])}"><img loading="lazy" decoding="async" src="${relicImage(content.artifactInfo[t.id]?.art)}" alt="">${esc(content.artifacts[t.id][0])}</button></th><td data-v="${n}" data-n="${t.w}">${n}</td><td data-v="${t.w}" data-n="${n}">${t.w}</td><td class="cs-rate" data-v="${rate}" data-n="${n}" style="background:hsla(${Math.round(rate*120)},55%,42%,${(Math.min(1,n/10)*.35+.06).toFixed(2)})">${Math.round(100*rate)}%</td></tr>`}).join('')}</tbody></table></div></div>`:'';
- return `<section class="relic-stats"><p>Finished solo runs by the relics they ended with.</p>${statsSearch('relics','Search relics')}${table('Relics',rows.filter(t=>!t.id.startsWith('cursed_')))}${table('Shadow relics',rows.filter(t=>t.id.startsWith('cursed_')))}<p class="stats-no-match" hidden>No matching relics.</p></section>`;
-}
-
-// Stats tables: tap a column heading to sort by it (again to reverse); the search box filters rows by name.
-// Rows with no runs in the sorted column stay last; ties keep the most played order. The choice lasts until the game closes.
-const statsView={};
-const statsSearch=(key,label)=>`<input type="search" class="stats-search" placeholder="${label}" aria-label="${label}" value="${esc(statsView[key]?.q||'')}" autocomplete="off" spellcheck="false">`;
-function sortableStats(root,key){
- const view=statsView[key]||={q:'',col:-1,dir:1},tables=[...root.querySelectorAll('table')],fold=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
- for(const table of tables){[...table.tBodies[0].rows].forEach((row,i)=>row.dataset.i=i);[...table.tHead.rows[0].cells].forEach((th,i)=>th.innerHTML=`<button type="button" class="stats-sort" data-col="${i}">${th.innerHTML}</button>`)}
- const sort=()=>{for(const table of tables){const body=table.tBodies[0],rows=[...body.rows],col=view.col,value=row=>{const c=row.cells[col];return c?.dataset.v===undefined?null:Number(c.dataset.v)};
-   if(col===0)rows.sort((a,b)=>view.dir*a.cells[0].textContent.trim().localeCompare(b.cells[0].textContent.trim()));
-   else if(col>0)rows.sort((a,b)=>{const x=value(a),y=value(b);if(x===null||y===null)return (x===null)-(y===null)||a.dataset.i-b.dataset.i;return view.dir*(x-y)||Number(b.cells[col].dataset.n)-Number(a.cells[col].dataset.n)||a.dataset.i-b.dataset.i});
-   else rows.sort((a,b)=>a.dataset.i-b.dataset.i);
-   body.append(...rows);[...table.tHead.rows[0].cells].forEach((th,i)=>i===col?th.setAttribute('aria-sort',view.dir>0?'ascending':'descending'):th.removeAttribute('aria-sort'))}};
- const filter=()=>{const q=fold(view.q).trim();let shown=0;for(const table of tables){let visible=0;for(const row of table.tBodies[0].rows){row.hidden=!!q&&!fold(row.dataset.name+' '+row.cells[0].textContent).includes(q);visible+=!row.hidden}shown+=visible;(table.closest('.stats-group')||table.closest('.character-stats-wrap')).hidden=!visible}
-  const none=root.querySelector('.stats-no-match');if(none)none.hidden=!!shown||!q};
- root.addEventListener('click',event=>{const b=event.target.closest('.stats-sort');if(!b||!root.contains(b))return;const col=Number(b.dataset.col);view.dir=view.col===col?-view.dir:col?-1:1;view.col=col;sort()});
- root.querySelector('.stats-search')?.addEventListener('input',event=>{view.q=event.target.value;filter()});
- if(view.col>=0)sort();filter();
+function renderCharacterStats(){renderUnavailableStats('characters')}
+function renderGlobalStats(){renderUnavailableStats('global')}
+function renderUnavailableStats(kind){
+ shell('Stats',`${statsNavigation(kind)}<div class="scroll"><p>${esc(statsUnavailable)}</p></div>`);
 }
 
 const coinMilestones=new WeakMap(),duelAnimations=new WeakMap(),coinProgress=new WeakMap();
@@ -3473,7 +3351,7 @@ function renderPersonalStats(){
 
  const metrics=[['Active hours played',Math.round(personalPlaySeconds()/360)/10],['Runs started',Math.max(p.runs||0,rows.length,p.wins||0)],['Runs won',p.wins||0],['Duels won',p.victories||0],['Recorded runs lost',rows.length-won],['Characters unlocked',p.unlocked?.length||0],['Most coins held',p.max_gold||0],['Most relics held',p.max_artifacts||0],['Singles bought',p.singles_bought||0],['Starter decks bought',p.decks_bought||0]];
 
- shell('Stats',`${statsNavigation('personal')}<div class="scroll personal-stats">${statsSince(Number.isFinite(first)&&first*1000)}<div class="personal-stat-grid">${metrics.map(([name,n])=>`<article class="panel"><strong>${Number(n).toLocaleString()}</strong><span>${name}</span></article>`).join('')}</div><section class="device-records"><div class="device-record-tabs" role="tablist">${[['collectors','Fallen Ultimate Collectors'],['opponents','Opponents']].map(([k,label])=>btn(label,'device-stats-tab',`data-tab="${k}" role="tab" aria-selected="${k===deviceStatsTab}"`,k===deviceStatsTab?'primary':'')).join('')}</div>${deviceStatsTab==='opponents'?`<section id="opponent-records">${opponentRecordMarkup(rows)}</section>`:'<section id="defeated-collectors"><h2>Defeated Ultimate Collector duelists</h2><p>Loading records…</p></section>'}</section></div>`);
+ shell('Stats',`${statsNavigation('personal')}<div class="scroll personal-stats">${statsSince(Number.isFinite(first)&&first*1000)}<div class="personal-stat-grid">${metrics.map(([name,n])=>`<article class="panel" ${name==='Active hours played'?'data-do="device-secret" role="button" tabindex="0"':''}><strong>${Number(n).toLocaleString()}</strong><span>${name}</span></article>`).join('')}</div><section class="device-records"><div class="device-record-tabs" role="tablist">${[['collectors','Fallen Ultimate Collectors'],['opponents','Opponents']].map(([k,label])=>btn(label,'device-stats-tab',`data-tab="${k}" role="tab" aria-selected="${k===deviceStatsTab}"`,k===deviceStatsTab?'primary':'')).join('')}</div>${deviceStatsTab==='opponents'?`<section id="opponent-records">${opponentRecordMarkup(rows)}</section>`:'<section id="defeated-collectors"><h2>Defeated Ultimate Collector duelists</h2><p>Loading records…</p></section>'}</section></div>`);
 
  if(deviceStatsTab==='collectors')void loadDefeatedCollectors();
 
@@ -3504,46 +3382,11 @@ function showDefeatedCollector(index){const d=defeatedCollectors[index];if(!d?.d
 
 
 
-const deviceSync=new DeviceSync(command);
-
-async function showDeviceSync(message=''){
-
- const {linked}=await deviceSync.run('status');
-
- dialog('Link devices',`<p>Sync unlocked characters, completed achievements, card sleeves, challenge levels and secret unlocks. Runs, cards, Ultimate Collector duelists and device statistics stay on this device.</p>${message}<p>${linked?'This device is linked. Unlocks sync automatically while online in menus.':'Generate a code here, then enter it on your other device.'}</p>${btn('Generate code','device-sync-create')}${linked?btn('Sync now','device-sync-now')+btn('Disconnect this device','device-sync-unlink'):`<label>Code from your other device <input id="device-link-code" maxlength="12" autocapitalize="characters" autocomplete="off" spellcheck="false"></label>${btn('Link Devices','device-sync-join')}`}`);
-
-}
-
-// Linked devices sync unlocks (2026-11-11, fewer Cloudflare requests): at start, the next time a menu is open after a
-// duel or run ends or an unlock changes, after the app was hidden 10+ minutes, and otherwise every 15 minutes in menus.
-// The 60 s tick below is local only; it sends nothing unless one of those is due.
-let deviceSyncTimer,deviceSyncDue=true,deviceSyncAt=0,deviceSyncHiddenAt=0,deviceSyncUnlocks=null;
-const DEVICE_SYNC_EVERY=900000,DEVICE_SYNC_AFTER_HIDDEN=600000;
-const syncedUnlocks=p=>p?JSON.stringify([p.unlocked,p.character_levels,p.gallery_unlocked,p.relicless_unlocked,p.cpu_viewer_unlocked]):'';
-function noteDeviceSyncChange(action){if(action==='device-sync-read')return;const now=syncedUnlocks(state?.profile);if(action!=='device-sync-merge'&&(action==='finish'||deviceSyncUnlocks!==null&&now!==deviceSyncUnlocks))deviceSyncDue=true;deviceSyncUnlocks=now}
-document.addEventListener('visibilitychange',()=>{if(document.hidden){deviceSyncHiddenAt=Date.now();return}if(deviceSyncHiddenAt&&Date.now()-deviceSyncHiddenAt>=DEVICE_SYNC_AFTER_HIDDEN)deviceSyncDue=true;deviceSyncHiddenAt=0});
-
-function startDeviceSync(){
-
- clearInterval(deviceSyncTimer);
-
- const sync=async()=>{if(deviceSync.linked===false||document.hidden||navigator.onLine===false||tagUI||!['title','settings','collection','stats','achievements','characters'].includes(screen)||quotaPausedUntil('progress'))return;if(!deviceSyncDue&&Date.now()-deviceSyncAt<DEVICE_SYNC_EVERY)return;deviceSyncDue=false;deviceSyncAt=Date.now();try{const before=JSON.stringify(state.profile),result=await deviceSync.run('sync');if(result.linked&&before!==JSON.stringify(state.profile)&&!modal.open&&!tagUI&&['title','collection','stats','achievements','characters'].includes(screen))render();}catch{/* Retry on the next menu sync; offline play keeps working. */}};
-
- void sync();deviceSyncTimer=setInterval(sync,60000);
-
-}
-
-
-
 // Recovery is explicit; normal background backups never replace local progress.
 
 const loadDeviceSave=async()=>window.ShadowNative?await ShadowNative.load():localStorage.getItem('shadow-run-mobile')||'{}';
 const storeDeviceSave=async data=>{if(window.ShadowNative){if(!await ShadowNative.store(data))throw Error('Could not save recovered progress.')}else localStorage.setItem('shadow-run-mobile',data)};
 
-// Cloud save (device-backup.js): the first-start question is asked once, and the code dialog is the one place
-// that explains it. cloudRestore holds a found save until the player confirms.
-const CLOUD_ASKED='ygo-cloud-save-asked';let cloudRestore=null;
-function showCloudCode(intro){const code=deviceBackup.status().code;if(code)dialog('Cloud save code',cloudCodeMarkup(code,intro,btn,esc))}
 // Firefox notice (user, 2026-11-13): every time the game opens in Firefox, explain that Compatibility Mode is on there
 // because effects flickered a lot otherwise, and suggest another browser. Shown after any startup dialog closes.
 function firefoxNotice(){
@@ -3552,11 +3395,7 @@ function firefoxNotice(){
  const on=compatibilityEnabled();
  dialog('Playing on Firefox',`<p>${esc(on?"Many of the game's effects flicker a lot in Firefox, so Compatibility Mode is on: blur, glow, 3D card turns and animated backgrounds are replaced with simpler versions.":"Compatibility Mode is off, so many of the game's effects may flicker a lot in Firefox.")}</p><p>${esc("For the full look and smoother animations, play in Chrome, Edge, Opera or Safari, or install the Android app.")}</p>${on?`<p class="muted">${esc("You can turn Compatibility Mode off in Settings › Display, but you may see flickering.")}</p>`:''}<div class="actions">${btn('OK','close')}</div>`);
 }
-function cloudStartup(newDevice){
- deviceBackup.migrate();const notice=deviceBackup.notice();
- if(notice){deviceBackup.clearNotice();showCloudCode(notice==='changed'?'Your cloud save needed a new code. Your new code:':'Cloud save is now encrypted with a code that only you have. Your code:');return}
- if(newDevice&&localStorage.getItem('ygo-cloud-saves-enabled')===null&&!localStorage.getItem(CLOUD_ASKED)){localStorage.setItem(CLOUD_ASKED,'true');dialog('Cloud save',cloudFirstBootMarkup(btn))}
-}
+
 
 document.addEventListener('change',async event=>{
 
@@ -3566,13 +3405,11 @@ document.addEventListener('change',async event=>{
 
  if(!confirm('Import this save? This replaces current runs, progress and Ultimate Collectors.'))return;
 
- deviceBackup.destroy();
-
  await restoreRecovery(recovery,{loadSave:loadDeviceSave,storeSave:storeDeviceSave});
 
  location.reload();
 
- }catch(error){deviceBackup.resume();dialog('Save recovery',`<p>${esc(error.message)}</p>`)}finally{event.target.value=''}
+ }catch(error){dialog('Save recovery',`<p>${esc(error.message)}</p>`)}finally{event.target.value=''}
 
 });
 
@@ -3639,7 +3476,6 @@ installGamepad({
  carousel:()=>screen==='title'&&titleMotion&&!modal.open?{center:[...app.querySelectorAll('.menu-card')].reduce((best,el)=>!best||Math.abs(el.dataset.distance)<Math.abs(best.dataset.distance)?el:best,null),step:dir=>action(dir>0?'menu-next':'menu-prev')}:null,
  // B steps back from the screens a main-menu card opens, from the Online submenu, and from the opponent screen.
  screenBack:()=>{if(modal.open||busy)return false;
-  if(screen==='title'&&menuPage!=='main'){action('main-menu');return true}
   if(screen==='routes'&&['shop','draft'].includes(previousScreen)){go(previousScreen);return true}
   if(screen==='settings'){action('settings-back');return true}
   if(screen==='cpu'&&cpuViewer){cpuViewer.back();return true}
@@ -3693,9 +3529,7 @@ document.addEventListener('change',e=>{if(e.target.matches('[data-preload-visual
 
 
 
-deviceBackup.setUploadGuard(()=>screen!=='duel'&&tagUI?.view?.phase!=='duel');
 
-document.addEventListener('change',e=>{if(e.target.id!=='cloud-saves-enabled')return;deviceBackup.setEnabled(e.target.checked);localStorage.setItem(CLOUD_ASKED,'true');renderSettings();if(e.target.checked)showCloudCode('Cloud save is on. Your code:')});
 
 
 

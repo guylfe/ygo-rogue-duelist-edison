@@ -404,18 +404,18 @@ def eligible_opponents(round_index,loop=0,act=None):
          + [i for i,row in TIER_EXCLUSIVE_OPPONENTS.items() if str(tier) in row.get('tier_decks',{str(row['tier']):row['deck']})]
          + [i for i,row in EDISON_DUELISTS.items() if row['home_act']==act])
 
-# Each defeated Collector is a separate, permanent NPC identity, not its avatar.
-UC_OPPONENTS={row['opponent_id']:row for row in json.loads((Path(__file__).parent/'data/fallen-collectors.json').read_text(encoding='utf8'))['opponents']}
-# One append-only identity space lets new characters follow existing UC identities.
-if set(TIER_EXCLUSIVE_OPPONENTS)&set(UC_OPPONENTS):raise ValueError('Duplicate opponent identity.')
-for _id in sorted(set(TIER_EXCLUSIVE_OPPONENTS)|set(UC_OPPONENTS)):
+# Keep retired Collector IDs so installed saves and the later Edison duelist IDs retain their meaning.
+_collector_catalogue=json.loads((Path(__file__).parent/'data/fallen-collectors.json').read_text(encoding='utf8'))
+RETIRED_COLLECTOR_IDS=set(_collector_catalogue.get('retiredOpponentIds',()))|{row['opponent_id'] for row in _collector_catalogue['opponents']}
+UC_OPPONENTS={}
+if set(TIER_EXCLUSIVE_OPPONENTS)&RETIRED_COLLECTOR_IDS:raise ValueError('Duplicate opponent identity.')
+for _id in sorted(set(TIER_EXCLUSIVE_OPPONENTS)|RETIRED_COLLECTOR_IDS):
  if _id!=len(CHARACTERS):raise ValueError('Opponent identities must remain append-only.')
  if _id in TIER_EXCLUSIVE_OPPONENTS:
   _row=TIER_EXCLUSIVE_OPPONENTS[_id]
   CHARACTERS.append(dict(name=_row['name'],sprite=_row['sprite'],background=_row['background'],pack=_row['reward_pack'],opponent_only=True,tier=_row['tier'],theme=_row['theme'],race='',attribute='',cards=[],type=2,bonus='',color='#e5c58a',starting_relic='none'))
  else:
-  _row=UC_OPPONENTS[_id];_avatar=CHARACTERS[_row['character']]
-  CHARACTERS.append(dict(_avatar,name=_row['name'],opponent_only=True,ultimate_collector=True,avatar_character=_row['character']))
+  CHARACTERS.append(dict(CHARACTERS[0],name='Fallen duelist',opponent_only=True,ultimate_collector=True,avatar_character=0))
 
 for _id, _duelist in EDISON_DUELISTS.items():
  if _id!=len(CHARACTERS):raise ValueError('Playable character identities must remain append-only.')

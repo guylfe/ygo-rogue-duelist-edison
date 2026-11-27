@@ -1,3 +1,4 @@
+import {roomService} from './edison-services.js';
 import {rewardIcon} from './reward-icons.js';
 import {RANDOM_PACK} from './random-cards.js';
 import {relicEyeIcon} from './relic-eye-icon.js';
@@ -292,21 +293,7 @@ export class TagUI {
   try{await this.action('rejoin',{code:room.code,dataset:{}})}catch(error){this.status='';if([400,404,410].includes(error.status)||/room|seat/i.test(error.message))forgetRoom();this.error(error)}
  }
 
- async endpoint(){
-
-  let config={};try{const response=await fetch('./multiplayer-config.json',{cache:'no-store'});if(response.ok)config=await response.json()}catch{}
-
-  // A release-wide address is configured once, never entered by each player.
-
-  const configured=config.signalingUrl||localStorage.getItem('tag-endpoint');
-
-  if(configured){const url=new URL(configured);if(url.protocol==='https:'||new URLSearchParams(location.search).has('tagtest')&&['localhost','127.0.0.1'].includes(url.hostname))return url.href}
-
-  if(new URLSearchParams(location.search).has('tagtest'))return 'http://127.0.0.1:8765';
-
-  throw Error('Online rooms are not available in this build yet. The room service needs to be configured.');
-
- }
+ async endpoint(){return roomService()}
 
  chosenVariant(){const alternate=this.content.characters[this.character]?.alternate;return alternate&&!alternate.randomized&&alternateUnlocked(this.profile,this.character)?this.variants?.[this.character]||0:0}
  portrait(id,label=''){

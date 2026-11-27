@@ -6,7 +6,7 @@ const bundled=()=>document.documentElement.dataset.bundledArtwork==='true';
 // where already granted or unsupported, and never prompts in those browsers.
 navigator.storage?.persisted?.().then(kept=>kept||navigator.storage.persist()).catch(()=>{});
 const panel=document.createElement('dialog');panel.id='web-app-settings';
-panel.innerHTML=`<h2>Download the app</h2><p class="web-downloads"><a class="web-android-download" href="https://github.com/guylfe/ygo-rogue-duelist-edison/releases/latest" target="_blank" rel="noopener noreferrer">Android release (APK)</a></p><p>On iPhone: open this page in Safari, tap Share, then Add to Home Screen and enable Open as Web App.</p><p id="web-status" role="status"></p><progress id="web-progress" hidden></progress><div class="web-actions"><button id="web-restart" hidden>Restart to update</button><button id="web-offline">Download / update offline game</button><button id="web-export">Export save backup</button><button id="web-import">Import save backup</button><button id="web-close">Close</button></div><input id="web-file" type="file" accept=".json,application/json" hidden><p>Keep a backup before clearing browser data or moving devices. Multiplayer needs an internet connection. Edison offers a hosted update when a newer build is available.</p>`;
+panel.innerHTML=`<h2>Download the app</h2><p class="web-downloads"><a class="web-android-download" href="https://github.com/guylfe/ygo-rogue-duelist-edison/releases/latest" target="_blank" rel="noopener noreferrer">Android release (APK)</a></p><p>On iPhone: open this page in Safari, tap Share, then Add to Home Screen and enable Open as Web App.</p><p id="web-status" role="status"></p><progress id="web-progress" hidden></progress><div class="web-actions"><button id="web-restart" hidden>Restart to update</button><button id="web-offline">Download / update offline game</button><button id="web-export">Export save backup</button><button id="web-import">Import save backup</button><button id="web-close">Close</button></div><input id="web-file" type="file" accept=".json,application/json" hidden><p>Keep a backup before clearing browser data or moving devices. Edison offers a hosted update when a newer build is available.</p>`;
 document.body.append(panel);
 const report=text=>{status=text;panel.querySelector('#web-status').textContent=text;};
 document.addEventListener('click',event=>{
@@ -139,7 +139,7 @@ document.addEventListener('game-startup-ready',({detail})=>{
  const key='ygo-offline-offer-seen';
  try{if(localStorage.getItem(key))return;localStorage.setItem(key,'1');}catch{/* The initialized save also prevents repeat offers. */}
  const offer=document.createElement('dialog');offer.id='web-offline-offer';
- offer.innerHTML='<h2>Download game data?</h2><p>Would you like to download data for a smoother experience and offline play?</p><p>Save game files on this device for faster future loading and fewer interruptions. Online modes still need an internet connection.</p><p>You can also download later from Settings.</p><div class="web-actions"><button data-download>Download</button><button data-later>Not now</button></div>';
+ offer.innerHTML='<h2>Download game data?</h2><p>Would you like to download data for a smoother experience and offline play?</p><p>Save game files on this device for faster future loading and fewer interruptions.</p><p>You can also download later from Settings.</p><div class="web-actions"><button data-download>Download</button><button data-later>Not now</button></div>';
  document.body.append(offer);
  offer.addEventListener('close',()=>offer.remove(),{once:true});
  offer.querySelector('[data-later]').onclick=()=>offer.close();
@@ -164,7 +164,7 @@ document.addEventListener('game-startup-ready',async()=>{
  const key='ygo-brave-warning-seen';
  try{if(localStorage.getItem(key))return;localStorage.setItem(key,'1');}catch{}
  const warning=document.createElement('dialog');warning.id='web-brave-warning';
- warning.innerHTML='<h2>Brave can delete your save</h2><p>Brave deletes the save of games played inside the itch.io page, usually when the browser closes.</p><p>To keep your progress, play on ygo-rogue.pages.dev, or turn on cloud save in Settings.</p><div class="web-actions"><a class="web-android-download" href="https://ygo-rogue.pages.dev/" target="_blank" rel="noopener noreferrer">Play on ygo-rogue.pages.dev</a><button data-ok>OK</button></div>';
+ warning.innerHTML='<h2>Brave can delete your save</h2><p>Brave deletes the save of games played inside the itch.io page, usually when the browser closes.</p><p>To keep your progress, open the hosted Edison edition or export a save backup.</p><div class="web-actions"><a class="web-android-download" href="https://rogue-duelist-edison.netlify.app/" target="_blank" rel="noopener noreferrer">Open the hosted Edison edition</a><button data-ok>OK</button></div>';
  document.body.append(warning);
  warning.addEventListener('close',()=>warning.remove(),{once:true});
  warning.querySelector('[data-ok]').onclick=()=>warning.close();

@@ -21,4 +21,6 @@ def web_files(root):
   if any(part.casefold()=='potential sound effects' for part in relative.parts):continue
   if p.name=='package.json' or p.name.startswith(('test-','tmp-')):continue
   if any(part.startswith('ai-backup-') or part=='__pycache__' for part in relative.parts):continue
+  if p.suffix in {'.js','.mjs','.json','.html'} and b'hadow--un--esktop.workers.dev' in p.read_bytes().lower():
+   raise RuntimeError(f'Upstream game service in Edison packaging input: {relative}')
   yield p,relative

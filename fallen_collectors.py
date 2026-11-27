@@ -1,5 +1,4 @@
-"""Release-bundled, shared Collector opponents for later campaign loops."""
-import copy
+"""Keep previously saved Collector opponents playable in existing runs."""
 from collections import Counter
 
 def sanitize(rows):
@@ -18,20 +17,9 @@ def sanitize(rows):
   result.append(dict(id=str(row.get('id',''))[:64],name=str(row.get('name','Fallen duelist'))[:32],character=character,deck=dict(main=main[:],extra=extra[:])))
  return result
 
-def candidates():
- # Release data is identical on every device and never reads the player's save.
- import json
- from pathlib import Path
- rows=json.loads((Path(__file__).parent/'data/fallen-collectors.json').read_text(encoding='utf8'))['opponents']
- identities={row['id']:row['opponent_id'] for row in rows}
- return [dict(row,avatar_character=row['character'],character=identities[row['id']]) for row in sanitize(rows)]
-
 
 def add_route(run,rng):
  run.pop('fallen_routes',None)
- if not run.get('loop') or run.get('encore_active'):return
- selected={str(d['character']):copy.deepcopy(d) for d in candidates() if d['character'] in run['routes']}
- if selected:run['fallen_routes']=selected
 
 
 def opponent(run,cid=None):

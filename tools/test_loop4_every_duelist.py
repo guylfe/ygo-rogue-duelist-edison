@@ -3,7 +3,7 @@
 v0.2.35 broke 'Start Looping' from loop 2 on: a local `import content` inside endless.challenge made `content` local to
 the whole function, so the Obelisk line raised UnboundLocalError (shown as "That action could not be completed").
 This walks each playable duelist, standard and alternate loadout, through every round of loops 1-4: the routes offered
-each round, the opponent deck and Extra Deck behind every route (Ultimate Collector opponents included from loop 2),
+each round, the opponent deck and Extra Deck behind every route (retired Collector IDs excluded),
 Copycat's borrowed deck, then 'Start Looping' / 'Begin next loop' at the end of each loop."""
 import random,sys,tempfile
 from pathlib import Path
@@ -14,7 +14,7 @@ import campaign_expansion,content,endless,character_variants
 from content import deck_round
 p=storage.profile();p['unlocked']=list(content.PLAYABLE_IDS);p['variants_unlocked']=True;storage.write(storage.ROOT/'profile.json',p)
 LOOPS=4
-checks=0;uc_seen=set();failures=[]
+checks=0;failures=[]
 
 def opponent_decks(r,rng):
  """The decks a duel against each offered route would use (prepare_duel / finish_duel / copy_deck)."""
@@ -25,7 +25,7 @@ def opponent_decks(r,rng):
   assert main,('empty opponent deck',opp)
   if deck_round(r) or r.get('loop'):content.opponent_record(deck_round(r),opp,r.get('loop',0))['extra']
   if content.copies_deck(r):g.copy_deck(r,rng);assert r['pool'] and r['copied_opponent']==opp
-  if opp in content.UC_OPPONENTS:uc_seen.add(opp)
+  assert opp not in content.RETIRED_COLLECTOR_IDS
   checks+=1
 
 for cid in content.PLAYABLE_IDS:
@@ -54,5 +54,4 @@ for cid in content.PLAYABLE_IDS:
 
 if failures:
  print('\n'.join(failures));raise SystemExit(f'FAIL {len(failures)} duelist loadouts could not reach loop {LOOPS+1}')
-assert uc_seen,'no Ultimate Collector opponent was offered in loops 2-4'
-print(f'PASS every duelist and loadout reaches loop {LOOPS+1} ({checks} checks, {len(uc_seen)} Ultimate Collector opponents met)')
+print(f'PASS every duelist and loadout reaches loop {LOOPS+1} ({checks} checks)')

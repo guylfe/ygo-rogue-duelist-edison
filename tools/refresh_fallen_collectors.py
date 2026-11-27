@@ -1,5 +1,5 @@
-"""Snapshot shared UC opponents at release time, never during gameplay."""
-import json,sys,urllib.error,urllib.request
+"""Build a Collector opponent snapshot from explicitly supplied fixture rows."""
+import json,sys
 from pathlib import Path
 from datetime import datetime,timezone
 import safe_write;safe_write.install()
@@ -9,17 +9,7 @@ sys.path.insert(0,str(ROOT))
 def refresh(rows=None):
  import content,fallen_collectors
  if rows is None:
-  config=json.loads((ROOT/'android/web/multiplayer-config.json').read_text())
-  # /v2 is the current path; the legacy path still answers on a service deployed before it.
-  for path in ('/v2/collector/fallen','/collector/fallen'):
-   req=urllib.request.Request(config['signalingUrl'].rstrip('/')+path,data=b'{}',headers={'Content-Type':'application/json','User-Agent':'YGO-release'})
-   try:
-    with urllib.request.urlopen(req,timeout=60) as response:data=json.load(response)
-    break
-   except urllib.error.HTTPError as error:
-    if error.code!=404 or path=='/collector/fallen':raise
-  if not isinstance(data.get('fallen'),list):raise ValueError('Invalid shared Collector response')
-  rows=data['fallen']
+  raise RuntimeError('Edison has no Collector service to refresh. Supply local fixture rows when testing.')
  target=ROOT/'data/fallen-collectors.json'
  old=json.loads(target.read_text(encoding='utf8'))['opponents'] if target.exists() else []
  combined={}
