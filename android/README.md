@@ -20,7 +20,7 @@ Saves are app-private and use Android AtomicFile. Duel responses are journaled a
 
 ## Playtest notes
 
-During a solo run, open **Playtest note**. In a duel it is under **Options** and pauses play while the note is open. Drafts and the captured game context stay on this device until you choose to open GitHub. Submit the prepared public issue while signed in as `guylfe`, then use **Check archive** or follow the link in the issue to the report in [playtest-feedback](https://github.com/guylfe/ygo-rogue-duelist-edison/tree/main/playtest-feedback). Leave the prepared title and body intact. You can return to the same duel and reopen saved reports from **Settings → Devices & App**.
+During a solo run, open **Playtest note**. In a duel it is under **Options** and pauses play while the note is open. **Send suggestion** uploads one private file with your note, the build version and recent game context. Offline suggestions stay queued on the device and retry with the same report ID. Edison shows **Suggestion sent** once it receives the upload receipt. You can return to the same duel and reopen saved reports from **Settings → Devices & App**.
 
 ## Controls
 

@@ -64,15 +64,20 @@ with tempfile.TemporaryDirectory() as folder, patch.object(storage, 'ROOT', Path
             game.reroll_shop(run, rng)
             assert {p['id'] for p in pack_items(run)} == {personal, opponent, marked}
 
-            preview = inspect_pack(personal, profile, run)
-            assert preview and all(acts.allows(run, row['id']) for row in preview)
+            pack = content.PACK_BY_ID[personal]
+            early = set()
+            if act < pack.get('home_act', 1):
+                early = {cid for slot in pack.get('goat_exceptions', {}).values() for cid in slot}
+            preview = inspect_pack(personal, profile, run, personal=True)
+            assert preview and all(acts.allows(run, row['id']) or row['id'] in early for row in preview)
             slot = next(i for i, p in enumerate(run['shop']) if p['id'] == personal)
             previous_pool = run['pool'][:]
             game.buy(run, slot, rng)
             pulls = run['pool'][len(previous_pool):]
             assert len(pulls) == 9 and len({game.card_identity(cid) for cid in pulls}) == 9
-            assert set(pulls) <= {row['id'] for row in preview if row['chance'] > 0}
-            assert all(acts.allows(run, cid) for cid in pulls)
+            assert all(acts.allows(run, cid) or cid in early for cid in pulls)
+            preview_identities = {game.card_identity(row['id']) for row in preview if row['chance'] > 0}
+            assert {game.card_identity(cid) for cid in pulls} <= preview_identities
     assert signatures == 47
 
     jaden = game.new_run(98, rng, act_campaign=True)
