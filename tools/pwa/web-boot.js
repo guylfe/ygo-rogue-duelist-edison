@@ -8,13 +8,13 @@ function newer(candidate,current){
  return changed!==-1&&next[changed]>now[changed];
 }
 async function liveVersion(){
- if(navigator.onLine===false)return null;
- try{
-  const response=await fetch('live-version.json',{cache:'no-store',signal:AbortSignal.timeout(2500)});
-  if(!response.ok)return null;
-  const latest=await response.json();
-  return newer(latest.version,replayVersion)&&/^[a-f0-9]{16}$/.test(latest.assetVersion)?latest:null;
- }catch{return null}
+ const response=await fetch('live-version.json',{cache:'no-store',signal:AbortSignal.timeout(6000)});
+ if(!response.ok)throw Error('Could not check for updates.');
+ const latest=await response.json();
+ if(latest.edition!=='edison'||!versionParts(latest.version)||!/^[a-f0-9]{16}$/.test(latest.assetVersion)){
+  throw Error('Invalid Edison release.');
+ }
+ return newer(latest.version,replayVersion)?latest:null;
 }
 function installed(worker){
  if(!worker||worker.state!=='installing')return Promise.resolve();
@@ -86,9 +86,17 @@ async function install(latest,status){
  }finally{navigator.serviceWorker.removeEventListener('message',progress)}
 }
 
-if(!window.ShadowNative)void liveVersion().then(latest=>{
- if(!latest)return;
- window.EdisonWebUpdate={version:latest.version,install:status=>install(latest,status)};
- window.dispatchEvent(new Event('edison-update-available'));
-});
+if(!window.ShadowNative){
+ let pending;
+ window.checkEdisonWebUpdate=()=>{
+  if(!pending)pending=liveVersion().then(latest=>{
+   window.EdisonWebUpdate=latest?{version:latest.version,install:status=>install(latest,status)}:null;
+   return latest;
+  }).finally(()=>{pending=null});
+  return pending;
+ };
+ void window.checkEdisonWebUpdate().then(latest=>{
+  if(latest)window.dispatchEvent(new Event('edison-update-available'));
+ }).catch(()=>{});
+}
 await Promise.all([import('./mobile.js'),import('./pwa.js')]);

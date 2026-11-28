@@ -869,6 +869,11 @@ function renderEdisonStartupUpdate(){
  </aside>`);
 }
 window.addEventListener('edison-update-available',renderEdisonStartupUpdate);
+window.addEventListener('edison-manual-update-available',()=>{
+ edisonStartupUpdateDismissed=false;
+ app.querySelector('.edison-startup-update')?.remove();
+ renderEdisonStartupUpdate();
+});
 
 function go(name){if(name==='routes'&&state.run?.reward_slots?.pending){if(rewardDeckReturn)go(postDuelScreen());return;}if(rewardDeckReturn&&!['draft','shop','ending'].includes(name))rewardDeckReturn=false;if(name!=='duel'){clearTimeout(heldChainTimer);heldChainTimer=0;heldChainPointer=null;heldAlwaysChain=false;heldChainPrompt=null;}cancelCharacterEntrance();if(name!=='ending')clearShadowVictory();clearDuelEmotes();flushDraftTap();if(name!=='shop')keeperTalk.hush();if(name!=='shop'||screen!=='shop'){cancelShopkeeperShrink();shopkeeperSmall=false;resetShopkeeperRightClicks()}const pendingRewards=['shop','ending','act_transition'].includes(name)&&state.run?.reward_slots?.pending;if(pendingRewards)rewardMusic=true;if(name!==screen)previousScreen=screen;screen=name;syncBackgroundAnimations();render();if(name==='shop')settleViewport();if(['draft','shop'].includes(name)&&(state.run?.artifacts.includes('dna_rewrite')&&!state.run.monster_type||pendingRelicChoice(state.run))&&!modal.open)void offerGoldenCards();if(pendingRewards){if(rewardDeckReturn){rewardDeckReturn=false;if(modal.querySelector('.reward-screen')){modal.showModal();rewardPresentation?.refresh()}else showRewardSlots()}else showVictoryReceipt()}}
 
@@ -1513,7 +1518,7 @@ function renderSettings(){
   display:`<h2>Display</h2><div class="set-row settings-language"><span class="set-text"><b>Language</b><small>Interface and card texts.</small></span><button class="settings-language-button" data-do="language" aria-label="Language" title="Language">${flagSvg(currentLanguage())}<span>${esc(LANGUAGES.find(([code])=>code===currentLanguage())?.[1]||'English')}</span></button></div>${displaySettings()}${duelBackgroundSetting()}${window.ShadowNative?'':settingToggle('Preload Game Assets','Load music, artwork and backgrounds at startup. Sound effects always preload.','data-preload-visuals',preloadVisualPreference()==='all')}`,
   // Saved Data lives in the Devices & App tab (2026-11-06).
   saves:`<h3 class="saved-data-head">Saved Data</h3><p class="muted">${esc(cloudUnavailable)}</p><p class="muted">Updating the app keeps your progress.</p><div class="set-group settings-actions">${window.ShadowNative?.exportSave?btn('Export save backup','edison-export-save'):''}<label class="set-file">Import a save file <input id="device-recovery-file" type="file" accept=".json,application/json"></label></div><details class="set-group settings-danger"><summary>Reset Progress</summary><p>Remove all saved progress on this device.</p>${btn('Delete All Progress','reset-progress','','danger')}</details>`,
-  devices:`<h2>Devices &amp; App</h2><div class="settings-actions">${window.ShadowNative?.openEdisonUpdate?btn('Check for Edison updates','edison-update'):''}${(playtestDraft||loadPlaytestDrafts().length)?playtestNoteButton():''}</div>`,
+  devices:`<h2>Devices &amp; App</h2><div class="settings-actions">${window.ShadowNative?.openEdisonUpdate?btn('Check for updates','edison-update'):''}${(playtestDraft||loadPlaytestDrafts().length)?playtestNoteButton():''}</div>`,
   replays:`<h2>Replays &amp; Stats</h2><p>${esc(replaysUnavailable)}</p><p>${esc(statsUnavailable)}</p>`,
   about:`<h2>About and Tutorial</h2><div class="settings-actions">${btn('Tutorial Duel','lesson-start')}${btn('How to Play','tutorial')}</div><p class="notice settings-about">Yu-Gi-Oh: Rogue Duelist · A private fan experiment.<br>Original game created and designed by Thronior.<br>Card and character artwork © Konami. Duel rules: Project Ignis / ocgcore-wasm.</p><details class="set-group settings-advanced"><summary>Advanced</summary><label for="cheat-code">Testing Code</label><div class="settings-code"><input id="cheat-code" placeholder="Enter code">${btn('Apply','cheat')}</div></details>`
  };

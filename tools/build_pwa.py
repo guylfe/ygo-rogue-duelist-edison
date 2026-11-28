@@ -46,7 +46,7 @@ def build(root,out,templates,bundle_artwork=False):
  text=text.replace(old,"<button id=\"web-app-options\">Install, offline play &amp; save backups</button>"+old)
  marker='<small style="padding-bottom:8px">Fan Experiment'
  assert marker in text
- text=text.replace(marker,'<button class="web-install-menu" data-web-install>Download the app</button>'+marker,1)
+ text=text.replace(marker,'<button class="web-install-menu" data-web-install>Download the app</button><button data-edison-check>Check for updates</button><span data-edison-check-status role="status"></span>'+marker,1)
  text=text.replace('esc(e.message)', "esc(e.message||'Storage or game files could not be loaded. Check browser storage permissions and available space.')")
  text=text.replace('<button id="retry-startup">Retry loading</button>', '<button id="retry-startup">Retry loading</button><button data-web-install>Save backups and offline settings</button>')
  mobile.write_text(text,encoding='utf8')

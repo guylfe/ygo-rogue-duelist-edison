@@ -1,5 +1,35 @@
 import {webStorage,validateSave,storageError} from './pwa-storage.js';
 let registration,status='Online play available. Download game files for offline play.',restarting=false,storageFull=false,observer;
+import {replayVersion} from './replay-version.js';
+async function checkFromTitle(button){
+ const status=button.parentElement.querySelector('[data-edison-check-status]');
+ button.disabled=true;
+ status.textContent='Checking for updates…';
+ try{
+  if(window.checkEdisonWebUpdate){
+   const latest=await window.checkEdisonWebUpdate();
+   if(!button.isConnected)return;
+   status.textContent=latest?'':'Edison v'+replayVersion+' is up to date.';
+   if(latest)window.dispatchEvent(new Event('edison-manual-update-available'));
+  }else{
+   const response=await fetch('https://api.github.com/repos/guylfe/ygo-rogue-duelist-edison/releases/latest',{cache:'no-store',signal:AbortSignal.timeout(6000)});
+   if(!response.ok)throw Error();
+   const release=await response.json();
+   const tag=/^edison-v(\d+\.\d+\.\d+)$/.exec(release.tag_name);
+   if(!tag||release.draft||release.prerelease)throw Error();
+   const installed=replayVersion.split('.').map(Number), published=tag[1].split('.').map(Number);
+   const diff=published.findIndex((n,i)=>n!==installed[i]);
+   if(diff<0||published[diff]<installed[diff])status.textContent='Edison v'+replayVersion+' is up to date.';
+   else{
+    const link=document.createElement('a');
+    link.href='https://github.com/guylfe/ygo-rogue-duelist-edison/releases/latest';
+    link.target='_blank';link.rel='noopener';link.textContent='Get Edison v'+tag[1];
+    status.replaceChildren(link);
+   }
+  }
+ }catch{status.textContent='Could not check for updates. Try again.'}
+ finally{button.disabled=false}
+}
 const bundled=()=>document.documentElement.dataset.bundledArtwork==='true';
 // Ask the browser to keep this site's storage, so a save is not cleared to free space (Max, Discord 2026-11-09:
 // saves vanished after a few days in Brave). Chrome and Edge grant it to installed or often used sites; it is a no-op
@@ -10,6 +40,8 @@ panel.innerHTML=`<h2>Download the app</h2><p class="web-downloads"><a class="web
 document.body.append(panel);
 const report=text=>{status=text;panel.querySelector('#web-status').textContent=text;};
 document.addEventListener('click',event=>{
+ const check=event.target.closest('[data-edison-check]');
+ if(check)void checkFromTitle(check);
  if(event.target.closest('#web-app-options,[data-web-install]')){report(status);panel.showModal();}
  if(event.target.closest('[data-web-update]'))restart();
 });
