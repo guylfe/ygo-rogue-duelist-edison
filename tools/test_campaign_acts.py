@@ -23,8 +23,9 @@ random.seed(113)
 cid = lambda name: game.BY_NAME[name]['id']
 cyber, honest, stardust = map(cid, ['Cyber Dragon','Honest','Stardust Dragon'])
 assert len(acts.ACTS)==3 and 'EN-EXVC' not in content.PACK_BY_ID
-assert 'EN-DPKB' in acts.native_packs(3)
-assert all(content.PACK_BY_ID[p]['date']<='2010-04-20' for p in acts.native_packs(3))
+assert 'EN-DPKB' in acts.native_packs(3, consolidate=False)
+assert 'DRAFT-SETO-KAIBA' in acts.native_packs(3)
+assert all(content.PACK_BY_ID[p]['date']<='2010-04-20' for p in acts.native_packs(3, consolidate=False))
 assert 'EN-TLM' in acts.native_packs(1)
 assert 'EN-CRV' not in acts.native_packs(1) and 'EN-CRV' in acts.native_packs(2)
 assert 'EN-LODT' in acts.native_packs(2)
@@ -43,7 +44,7 @@ for act, rules in enumerate(acts.ACTS, 1):
     size = acts.CONFIG['opening_rotation_size' if act == 1 else 'rotation_size']
     assert len({frozenset(lineup) for lineup in lineups}) > 1
     assert all(len(lineup) == size < len(native) for lineup in lineups)
-    assert all(rules['featured_pack'] in lineup and lineup.intersection(rules['companion_packs']) for lineup in lineups)
+    assert all(rules['featured_pack'] in lineup and lineup.intersection(acts.unique_offers(rules['companion_packs'])) for lineup in lineups)
     assert set.union(*lineups) == native
 
 def dispatch(action, value=None):
@@ -100,7 +101,8 @@ with tempfile.TemporaryDirectory() as folder, patch.object(storage,'ROOT',Path(f
             assert approved_relics.minimum(run)==expected
             if run['stage']=='shop':
                 verify_stock(run)
-            assert not excluded.intersection(reward['pack'] for reward in run['route_rewards'].values())
+            assert not excluded.intersection(reward['pack'] for route, reward in run['route_rewards'].items()
+                                             if reward['pack'] != acts.home_pack(run, int(route)))
             for opponent in run['routes']:
                 record=game.run_opponent_record(run,opponent)
                 assert all(acts.allows(run,c) for c in record['main']+record['extra'])
@@ -140,8 +142,7 @@ with tempfile.TemporaryDirectory() as folder, patch.object(storage,'ROOT',Path(f
         run=mobile_backend.run
         assert run['act_transition']==offer and run['pack_rotations']==rotations
         assert set(offer['choices']).issubset(rotations[str(act+1)])
-        assert all(acts.pack_act(p)==act+1 for p in offer['choices'])
-        assert all(content.PACK_BY_ID[p]['date']<=acts.ACTS[act]['cutoff'] for p in offer['choices'])
+        assert set(offer['choices']).issubset(acts.native_packs(act+1))
         assert ('EN-LODT' in offer['choices'])==(act==1)
         keep=offer['carryable'][:2]
         if act==1:retired=next(p for p in offer['carryable'] if p not in keep)

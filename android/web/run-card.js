@@ -5,6 +5,7 @@ import {replayVersion} from './replay-version.js';
 import {t as tr,currentLocale} from './i18n.js';
 import {saveDeckImage} from './save-deck-image.js';
 import {curseIconFile} from './experience-ui.js';
+import {encounterName} from './encounter-name.js';
 export const RUN_CARD_SIZE={width:1080,height:1350};
 const W=1080,H=1350,L=80,R=1000,BOSS_EVERY=3;// BOSS_EVERY mirrors content.py.
 // Android has no Impact, so the card bundles Bebas Neue (SIL OFL 1.1, notice inside the font file) as the fallback.
@@ -356,16 +357,16 @@ export function runCardName(r,content){
 // strip (run-progress.js) both draw from it. The loop defaults to the latest one recorded.
 export function runDuels(r,{content,assetURL=p=>p,loop,act,played}){
  const runLength=content.campaignActs?.[act-1]?.duels||content.runLength||9;
- const timeline=r.timeline||[],names=id=>content.characters[id]?.name||'Unknown duelist';
+ const timeline=r.timeline||[];
  loop??=Math.max(1,...timeline.map(x=>x.loop||1));const latest=timeline.filter(x=>(x.loop||1)===loop&&(!act||(x.act||1)===act));
  // Runs that started before the timeline existed still show which duels were played.
- const duels=Array.from({length:runLength},(_,i)=>{const x=latest.find(x=>x.duel===i+1);return x?{name:names(x.opponent),sprite:content.characters[x.opponent]?.sprite?assetURL(`assets/${content.characters[x.opponent].sprite}`):null,won:!!x.won,lp:+x.lp_after_healing||0}:i<played?{missing:true}:null});
+ const duels=Array.from({length:runLength},(_,i)=>{const x=latest.find(x=>x.duel===i+1);return x?{name:encounterName(content,x.opponent,x.opponent_variant_act),sprite:content.characters[x.opponent]?.sprite?assetURL(`assets/${content.characters[x.opponent].sprite}`):null,won:!!x.won,lp:+x.lp_after_healing||0}:i<played?{missing:true}:null});
  return {runLength,loop,latest,duels}
 }
 
 // Everything the card shows, as plain data with image URLs; deps come from the client (mobile.js).
 export function runCardData(r,{content,character,card,cardImage,relicImage,assetURL=p=>p,finalChallengeName=()=>''}){
- const won=r.stage==='complete',level=r.challenge_level??0,names=id=>content.characters[id]?.name||'Unknown duelist';
+ const won=r.stage==='complete',level=r.challenge_level??0;
  const runLength=content.campaignActs?.[r.act-1]?.duels||content.runLength||9;
  const played=won?runLength:Math.min(runLength,(r.round||0)+1),{loop,latest,duels}=runDuels(r,{content,assetURL,act:r.act,played});
  const lost=latest.find(x=>!x.won),lostDuel=lost?.duel||played;
@@ -400,7 +401,7 @@ export function runCardData(r,{content,character,card,cardImage,relicImage,asset
   d.eyebrow=`${d.tag?'TAG RUN':'RUN'} LOST · ${r.act?'ACT '+r.act+' · ':''}DUEL ${lostDuel} OF ${runLength}`;d.title='THE SHADOWS CLAIM THIS RUN';d.subtitle=`${d.tag?'Tag · ':''}Challenge LVL ${level}`;
   const killer=r.loss?.card?card(r.loss.card):null,text=String(r.loss?.text||'Your life points reached 0').replace(/\s+—\s+[\d,]+ damage$/,''),at=killer?text.lastIndexOf(killer.name):-1;
   // The lead stops before the card name, without the quote mark of 'Defeated by the effect of "Exodia…"'.
-  d.outcome={lead:at>0?text.slice(0,at).replace(/["“]\s*$/,'').trim():text,cardName:at>0?killer.name:'',amount:r.loss?.damage>0?count(r.loss.damage):'',detail:lost?`Duel ${lost.duel} · ${names(lost.opponent)}`:`Duel ${lostDuel}`,card:killer?cardImage(killer.id):''};
+  d.outcome={lead:at>0?text.slice(0,at).replace(/["“]\s*$/,'').trim():text,cardName:at>0?killer.name:'',amount:r.loss?.damage>0?count(r.loss.damage):'',detail:lost?`Duel ${lost.duel} · ${encounterName(content,lost.opponent,lost.opponent_variant_act)}`:`Duel ${lostDuel}`,card:killer?cardImage(killer.id):''};
   d.label=`${d.tag?`${d.name} and ${d.tag.name} lost the Tag run`:`${d.name} lost`} on duel ${lostDuel} of ${runLength} at Challenge Level ${level}. ${r.loss?.text||''}`.trim()
  }
  return d

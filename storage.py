@@ -35,8 +35,9 @@ def profile():
  p=read(ROOT/'profile.json',{})
  if not isinstance(p,dict): p={}
  for k,v in {'unlocked':[0,1],'wins':0,'runs':0,'victories':0,'won_as':[],'max_gold':0,'max_bought':0,'max_artifacts':0,'decks_bought':0}.items():p.setdefault(k,v)
- from content import EDISON_DUELISTS
- p['unlocked']=sorted(set(p['unlocked'])|EDISON_DUELISTS.keys())
+ import character_progression
+ if p.get('campaign_roster_version',0)<character_progression.VERSION:
+  character_progression.migrate(p,(read(run_path(slot)) for slot in (1,2,3)))
  import challenge_levels
  challenge_levels.sync_engine_unlock(p)
  if 'achievement_notices' in p:p['achievement_notices']=[n for n in p['achievement_notices'] if not str(n.get('id','')).startswith(('card:','pack:'))]
@@ -196,7 +197,7 @@ def merge_desktop_profile(raw, metrics=()):
  for key in ('unlocked','won_as'):
   values=incoming.get(key,[])
   if not isinstance(values,list) or any(type(x)!=int or x<0 or x>1000 for x in values):raise ValueError('Invalid character unlock data.')
-  merged[key]=sorted(set(current.get(key,[]))|set(values))
+  if key=='won_as':merged[key]=sorted(set(current.get(key,[]))|set(values))
  keys=set(metrics)|{'best_payout','best_hit','wins','runs','victories','max_gold','max_bought','max_artifacts','decks_bought','packs_variety','relic_variety','singles_bought'}
  for key in keys:
   if key.startswith('won_as:') or key not in incoming:continue
@@ -226,6 +227,10 @@ def merge_desktop_profile(raw, metrics=()):
   if any(not isinstance(x,dict) or type(x.get('lp_after_healing')) not in (int,float) for x in row.get('timeline',[])):raise ValueError('Invalid run timeline.')
   if row.get('loss') is not None and not isinstance(row['loss'],dict):raise ValueError('Invalid loss details.')
   if identity(row) not in seen:history.append(row);seen.add(identity(row));added+=1
+ import character_progression
+ incoming['campaign_roster_version']=character_progression.VERSION if incoming.get('campaign_roster_version')==character_progression.VERSION else 0
+ character_progression.migrate(incoming)
+ merged['unlocked']=sorted(set(current['unlocked'])|set(incoming['unlocked']))
  # All validation completes before any write; storage.write keeps the old profile as .bak.
  write(ROOT/'profile.json',merged)
  return dict(historyAdded=added,unlocksAdded=len(set(merged['unlocked'])-set(current.get('unlocked',[]))))

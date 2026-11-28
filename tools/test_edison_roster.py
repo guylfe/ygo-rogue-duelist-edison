@@ -142,9 +142,9 @@ with tempfile.TemporaryDirectory() as tmp, patch.object(storage,'ROOT',Path(tmp)
         dispatch('act-starter', next(iter(run['starter_offer'])))
         dispatch('auto')
         assert game.validate(run) is None and all(player_eligible(run,cid) for cid in run['pool'])
-        assert duelist['support'] in run['pack_rotations'][str(home)]
+        assert acts.offer_id(duelist['support']) in run['pack_rotations'][str(home)]
         draft_offer=acts.transition_offer(dict(run,act=home-1),rng)
-        assert pid in draft_offer['choices'] and duelist['support'] in draft_offer['choices']
+        assert {pid, acts.offer_id(duelist['support'])} <= set(draft_offer['choices'])
 
         # Use the regular route draw and the same opponent preparation, win,
         # and shop actions as the browser. Only the home-act position is staged.

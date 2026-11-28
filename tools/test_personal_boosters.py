@@ -151,7 +151,8 @@ with tempfile.TemporaryDirectory() as folder, patch.object(storage, 'ROOT', Path
         cards = lambda x: set(x['common'] + x['rare'])
         assert cards(goat) == cards(pack['goat_slots'])
         assert cards(gx) == cards(goat) | {cid for cid in cards(pack) if acts.FIRST_ACT[cid] <= 2}
-        assert cards(edison) == cards(pack)
+        retail = [content.PACK_BY_ID[source] for source, owner in acts.RETAIL_BOOSTERS.items() if owner == pack['id']]
+        assert cards(edison) == cards(pack).union(*(cards(source) for source in retail))
         assert not any(acts.FIRST_ACT[cid] == 3 for cid in cards(gx))
         assert len(cards(gx)) >= 9
     yusei = content.EDISON_DUELISTS[106]['pack']

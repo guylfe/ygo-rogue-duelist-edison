@@ -3,6 +3,7 @@
 // bosses as diamonds, the next duel ringed in gold, on a track filled up to the next duel.
 import {runDuels,bossDuel} from './run-card.js';
 import {curseDescription,curseIconFile} from './experience-ui.js';
+import {routeOpponentName} from './encounter-name.js';
 
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -53,7 +54,7 @@ export function bossPreviewMarkup(r,{content}){
  // Later loops stack many copies of a curse: each is listed once with its count.
  const counts=new Map();for(const key of boss.curses)counts.set(key,(counts.get(key)||0)+1);
  const curses=[...counts].map(([key,n])=>`<li><img src="${curseIconFile(key)}" alt=""><div><b>${esc(content.curses[key]?.[0]||key)}${n>1?` ×${n}`:''}</b><p>${esc(curseDescription(content,key,r.challenge_level))}</p></div></li>`).join('');
- return `<div class="boss-preview"><div class="boss-preview-hero" style="background-image:url('assets/${esc(c.background||`character-backgrounds/${boss.opponent}.jpg`)}')"><img src="assets/${esc(c.sprite)}" alt=""><div><small>Duel ${boss.duel}</small><h3>${esc(c.name)}</h3></div></div>${curses?`<ul class="boss-preview-curses" aria-label="Boss curses">${curses}</ul>`:'<p class="muted">No curses.</p>'}${boss.pending?'<p class="muted">Depends on the curse you take in Duel 1.</p>':''}</div>`;
+ return `<div class="boss-preview"><div class="boss-preview-hero" style="background-image:url('assets/${esc(c.background||`character-backgrounds/${boss.opponent}.jpg`)}')"><img src="assets/${esc(c.sprite)}" alt=""><div><small>Duel ${boss.duel}</small><h3>${esc(routeOpponentName(content,r,boss.opponent))}</h3></div></div>${curses?`<ul class="boss-preview-curses" aria-label="Boss curses">${curses}</ul>`:'<p class="muted">No curses.</p>'}${boss.pending?'<p class="muted">Depends on the curse you take in Duel 1.</p>':''}</div>`;
 }
 export function bossPreview(r,deps){const body=bossPreviewMarkup(r,deps);if(body)deps.dialog('Next boss',body)}
 function bindBossPreview(page,r,deps){

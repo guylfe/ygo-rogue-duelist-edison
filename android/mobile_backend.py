@@ -58,8 +58,10 @@ def dispatch(raw):
   if isinstance(value,dict):
    if type(value.get('starter')) is int:view,personal={'act':1,'character':value['starter']},True
    elif value.get('campaign'):view,personal=run,bool(value.get('personal'))
-  if view and pid in (view.get('act_transition') or {}).get('choices',[]):
-   view,personal=dict(view,act=view['act_transition']['incoming']),False
+  if view and (pending:=view.get('act_transition')):
+   offer=acts.offer_id(pid) if acts.consolidates(view) else pid
+   if offer in pending['choices'] or offer in pending['carryable']:
+    view,personal=dict(view,act=pending['incoming']),False
   return json.dumps(dict(result=inspect_pack(pid,storage.profile(),view,personal=personal)),ensure_ascii=False)
  if action.startswith('device-sync-'):
   import progress_sync

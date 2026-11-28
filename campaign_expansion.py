@@ -146,6 +146,7 @@ def install(g):
   if r and r.get('stage')=='gameover':storage.archive_run(r);storage.clear_run(slot);return None
   if r:
    normalize_pack_references(r)
+   migrated_boosters=acts.migrate_booster_offers(r)
    if r.get('challenge_level',0)>=6:r.setdefault('persistent_curses',list(r.get('curses',[])))
    shop_rewards.normalize_run(r)
    # Retire removed relics without invalidating an existing run.
@@ -159,6 +160,8 @@ def install(g):
    for item in r.get('shop',[]):
     if item['kind']=='single':item['id']=aliases.get(item['id'],item['id'])
    for k,v in dict(version=3,stage='draft',curses=[],boss_cursed=[],purchased=0,artifacts=[],history=[],shop=[],duel=None,routes=[],opponent=None).items():r.setdefault(k,v)
+   if r['stage']=='duel' and r['duel'] and 'opponent_variant_act' not in r['duel']:
+    r['duel']['opponent_variant_act']=acts.duel_variant(g,r)
    if r.get('stage')!='duel' and (r['round']+1)%3==0 and len(r.get('routes',[]))>1:
     r['routes']=r['routes'][:1];r['opponent']=r['routes'][0]
    if r['version']<3:r['shop']=[];r['version']=3
@@ -179,21 +182,29 @@ def install(g):
    r['selected']=selected
    if r['stage']!='duel' and not r.get('encore_active') and r['round']<RUN_LENGTH:
     boss=(r['round']+1)%BOSS_EVERY==0
-    eligible=acts.encounter_opponents(r,deck_round(r))
-    available=set(eligible)-{r['character'],*r.get('defeated_opponents',[])}
-    if acts.opponent_rules(r) and not boss:
+    curated=acts.opponent_rules(r)
+    reserved=()
+    if curated and not boss:
      import boss_preview
      plan=boss_preview.planned(r)
-     if plan:available.discard(plan['opponent'])
-    count=1 if boss else min(5,len(available)) if acts.opponent_rules(r) else 5
-    if not r['routes'] or len(r['routes'])!=count or any(i not in available for i in r['routes']):routes(r)
+     if plan:reserved=(plan['opponent'],)
+    eligible=acts.encounter_opponents(r,deck_round(r),reserved=reserved)
+    available=set(eligible)-{r['character'],*r.get('defeated_opponents',[]),*reserved}
+    count=1 if boss else min(5,len(available)) if curated else 5
+    saved_count=len(r['routes'])
+    # Adding natives can raise the capacity of an old act's saved offers.
+    valid_count=0<saved_count<=count if curated and not acts.route_limited(r) else saved_count==count>0
+    if not valid_count or any(i not in available for i in r['routes']):routes(r)
    import boss_preview
    if boss_preview.ensure(r,random,route_choices,boss_curse_block):save(r)
    if r.get('reward_rules')!=5 and r['stage']!='duel':
     r['route_rewards']=shop_rewards.route_rewards(r['routes'],random,storage.profile(),r)
     r['reward_rules']=5;save(r)
    if r['stage']=='shop' and (not r['shop'] or any(not item['sold'] and ((item['kind']=='single' and not unlocks.card_allowed(g.BY_ID[item['id']])) or (item['kind']=='pack' and not unlocks.available('pack',item['id']))) for item in r['shop'])):restock(r)
-   if r['stage']=='shop' and ensure_shop_packs(r):save(r)
+   if r['stage']=='shop':
+    repair_rng=random.Random(f"{r.get('pack_seed', r['started_at'])}:shop:{r.get('act')}:{r['round']}") if migrated_boosters else random
+    migrated_boosters=ensure_shop_packs(r,repair_rng) or migrated_boosters
+   if migrated_boosters:save(r)
    if bounty_reward_migrated:save(r)
   if r:
    challenge_levels.suppress(r)
@@ -243,7 +254,7 @@ def install(g):
  def route_choices(run,rng=random,avoid=()):
   """Who routes() may offer on run['round']; avoid keeps a stretch's planned boss out of its ordinary duels."""
   rd=run['round'];boss=(rd+1)%BOSS_EVERY==0;tutorial=deck_round(run)==0 and not run.get('loop')
-  eligible=acts.encounter_opponents(run,deck_round(run))
+  eligible=acts.encounter_opponents(run,deck_round(run),reserved=avoid)
   if acts.opponent_rules(run):
    choices=eligible
   else:
@@ -549,6 +560,7 @@ def install(g):
   fallen=fallen_collectors.opponent(run)
   if acts.active(run) and not run.get('encore_active'):
    record=run_opponent_record(run);enemy=record['main'][:];enemy_extra=record['extra'][:]
+   request['opponent_variant_act']=record.get('variant_act')
   elif fallen:
    # A saved Collector encounter owns its deck; it may predate roster restrictions.
    enemy=fallen['deck']['main'][:];enemy_extra=fallen['deck']['extra'][:]
@@ -637,8 +649,8 @@ def install(g):
   bonus=variant_relics.coins(run,events)
   if bonus:tally['Fusion Dividend']=bonus;total+=bonus
   return {k:v for k,v in tally.items() if v},total
- def update_profile(run,won=False):
-  import achievement_model,character_variants
+ def update_profile(run,won=False,duel_progress=None):
+  import achievement_model,character_variants,character_progression
   p=storage.profile();previous={x['id'] for x in achievement_model.entries(p) if x['done']}
   had_variant=character_variants.unlocked(p,run['character'])
   p['max_gold']=max(p['max_gold'],run['gold']);p['max_bought']=max(p['max_bought'],run.get('purchased',0));p['max_artifacts']=max(p['max_artifacts'],len(run['artifacts']))
@@ -657,25 +669,24 @@ def install(g):
    p['wins']+=1;p['won_as']=list(set(p['won_as']+[run['character']]));run['profile_complete']=True
   # The end screen celebrates the run that unlocked the second variant (Challenge LVL 2, or a full LVL -1 run).
   if not had_variant and str(run['character']) in character_variants.VARIANTS and run['stage']=='complete' and (character_variants.unlocked(p,run['character']) or (run.get('challenge_level')==-1 and run.get('round',0)>=9)):run['variant_unlocked']=True
-  import character_progression
+  unlock_act=character_progression.observe_unlocks(p,run,won,duel_progress)
   character_progression.observe(p,run)
-  unlocked=set(p['unlocked'])|{0,1}
-  for i in PLAYABLE_IDS[2:]:
-   metric,target=unlock_rule(i)
-   value=(int(metric.split(':')[1]) in p['won_as']) if metric.startswith('won_as:') else p.get(metric,0)
-   if value>=target:unlocked.add(i)
+  unlocked=set(p['unlocked'])|character_progression.STARTERS
+  for i in PLAYABLE_IDS:
+   if i in unlocked:continue
+   act,_,target,_=character_progression.rule(i)
+   if (i in character_progression.SPECIAL or act==unlock_act) and character_progression.value(p,i)>=target:unlocked.add(i)
   run['unlocks_earned']=sorted(set(run.get('unlocks_earned',[]))|(unlocked-set(p['unlocked'])))
   p['unlocked']=sorted(unlocked);unlocks.award(p,run,run.get('opponent') if won else None)
   notices=[dict(id=x['id'],name=x['name'],reward=x['reward']) for x in achievement_model.entries(p) if x['done'] and x['id'] not in previous and not x['id'].startswith('sleeve:')]
   p.setdefault('achievement_notices',[]).extend(notices)
   storage.write(storage.ROOT/'profile.json',p)
  def unlock_rule(i):
-  if i in EDISON_DUELISTS:return 'wins',0
-  rule=PROGRESSION['unlocks'][str(i)]
-  return rule['metric'],rule['target']
+  from character_progression import rule
+  return rule(i)[1:3]
  def unlock_text(i):
-  if i in (0,1) or i in EDISON_DUELISTS:return 'Available from the beginning'
-  return PROGRESSION['unlocks'][str(i)]['description']
+  from character_progression import rule
+  return rule(i)[3]
  def finish_duel(run,result,rng=random):
   if result.get('protocol')!=1 or not run.get('duel') or result.get('id')!=run['duel']['id']:raise ValueError('Duel result does not belong to this run.')
   if run['stage']!='duel':raise ValueError('Result already processed.')
@@ -684,6 +695,7 @@ def install(g):
   run['last_deck_minimum_increase']=0
   duel_number=run['round']+1
   duel_opponent=run.get('duel',{}).get('opponent',run['opponent'])
+  variant_act=acts.duel_variant(g,run)
   boss=duel_number%BOSS_EVERY==0
   run['lp']=max(0,int(result['lp']));won=result['winner']==0 and run['lp']>0
   # Solo duels report the save itself (passives.py hint 900000001). Only Tag duels, whose relic scripts carry no
@@ -693,7 +705,7 @@ def install(g):
   if 'relic_seal' not in run.get('curses',[]) and 'phoenix_rebirth' in run.get('artifacts',[]) and saved:
    run['artifacts']=[a for a in run['artifacts'] if a!='phoenix_rebirth'];run['phoenix_spent']=True
   import character_progression
-  character_progression.duel(g,run,result,won,boss)
+  duel_progress=character_progression.duel(g,run,result,won,boss)
   run['ritual_scar_count']=run.get('ritual_scar_count',0)+sum(e.get('kind')=='ritual_scar' for e in result.get('events',[]))
   run['last_rewards']={};run['last_gold']=0
   run['last_boss_heal']=0
@@ -720,7 +732,7 @@ def install(g):
    if wanted is not None:available.remove(wanted)
    chosen=[] if wanted is None else [wanted]
    run['last_reward_cards']=chosen+rng.sample(available,min((5 if boss else 1)-len(chosen),len(available)));run['last_reward_card']=next(iter(run['last_reward_cards']),None);run['pool'].extend(run['last_reward_cards'])
-   run['defeated_opponents']=sorted(set(run.get('defeated_opponents',[]))|{run['opponent']})
+   run['defeated_opponents']=sorted(set(run.get('defeated_opponents',[]))|{duel_opponent})
    coins_before_rewards=run['gold']
    run['last_rewards'],gold=rewards(run,result.get('events',[]),int(result.get('reason',0) or 0));run['last_gold']=gold;run['gold']+=gold
    run['shop_reward']=run.get('route_rewards',{}).get(str(run['opponent']),shop_rewards.reward_for(run['opponent']));run['bias']=run['shop_reward']['key'];run['round']+=0 if run.get('encore_active') else 1
@@ -758,7 +770,7 @@ def install(g):
     cursed_relics.create_offer(run,rng)
    endless.mark_final(run)
    # Award collection progress before generating this victory's shop.
-   update_profile(run,True)
+   update_profile(run,True,duel_progress)
    if run['stage']=='shop':
     routes(run,rng)
     if not boss:restock(run,rng)
@@ -810,8 +822,9 @@ def install(g):
   run.setdefault('timeline',[]).append(dict(duel=duel_number,loop=run.get('loop',0)+1,opponent=duel_opponent,won=won,lp_before_healing=int(result.get('lp',0)),lp_after_healing=run['lp'],curses=list(run.get('duel_curses') or []),coins=run.get('last_gold',0),turns=next((e.get('turns',0) for e in result.get('events',[]) if e.get('kind')=='duel_metrics'),0)))
   run['last_healing']={'before':int(result.get('lp',0)),'after':run['lp']}
   if acts.active(run):run['timeline'][-1]['act']=acts.era(run)
+  if variant_act:run['timeline'][-1]['opponent_variant_act']=variant_act
   run['history'].append(result)
-  if not won:update_profile(run)
+  if not won:update_profile(run,duel_progress=duel_progress)
   if won and boss and run['stage']=='shop':
    cursed_relics.create_offer(run,rng)
    if cursed_relics.pending(run):run['shop']=[]
@@ -825,7 +838,7 @@ def install(g):
   if count<=0:return acts.reserve_shop_packs(run,stock)
   profile=storage.profile()
   rotation=acts.rotation(run,ar.has(run,'duelist_catalogue'))
-  options=[p['id'] for p in (PACK_BY_ID[pid] for pid in rotation) if (not p.get('draft_only') or p['id'] in run.get('carried_packs',[]) or ar.has(run,'duelist_catalogue')) and p['id'] not in current and shop_rewards.pack_offered(p,rng) and unlocks.available('pack',p['id'],profile)]
+  options=[p['id'] for p in (PACK_BY_ID[pid] for pid in rotation) if (acts.consolidates(run) or not p.get('draft_only') or p['id'] in run.get('carried_packs',[]) or ar.has(run,'duelist_catalogue')) and p['id'] not in current and shop_rewards.pack_offered(p,rng) and unlocks.available('pack',p['id'],profile)]
   # Copycat's Randomizer sells Random Packs only.
   if random_cards.has_pool(run):options=[random_cards.RANDOM_PACK]*count
   price=ar.price(run,'pack',max(1,round(35*max(0,1-amount(run,'discount')/100))))
@@ -902,7 +915,9 @@ def install(g):
     items.append(item)
   def usable(pid):
    # Old shops/routes can predate progression; an unlocked early pack is the fallback.
-   if acts.active(run):return pid if acts.shop_pack_available(run,pid) else acts.rotation(run)[0]
+   if acts.active(run):
+    if acts.consolidates(run):pid=acts.offer_id(pid)
+    return pid if acts.shop_pack_available(run,pid) else acts.rotation(run)[0]
    return 'EN-LOB' if PACK_BY_ID.get(pid,{}).get('draft_only') or not unlocks.available('pack',pid,profile) else pid
   tied_ids=[usable(run.get('shop_reward',shop_rewards.reward_for(run['opponent']))['pack'])]
   if run.get('history_mode')=='tag' and len(tag_rewards)==2:
@@ -913,7 +928,7 @@ def install(g):
     if pid not in tied_ids:tied_ids.append(pid)
   pack_count=shop_pack_count(run)
   rotation=acts.rotation(run,ar.has(run,'duelist_catalogue'))
-  pack_pool=[p['id'] for p in (PACK_BY_ID[pid] for pid in rotation) if (not p.get('draft_only') or p['id'] in run.get('carried_packs',[]) or ar.has(run,'duelist_catalogue')) and p['id'] not in tied_ids and shop_rewards.pack_offered(p,rng) and unlocks.available('pack',p['id'],profile)]
+  pack_pool=[p['id'] for p in (PACK_BY_ID[pid] for pid in rotation) if (acts.consolidates(run) or not p.get('draft_only') or p['id'] in run.get('carried_packs',[]) or ar.has(run,'duelist_catalogue')) and p['id'] not in tied_ids and shop_rewards.pack_offered(p,rng) and unlocks.available('pack',p['id'],profile)]
   others=rng.sample(pack_pool,min(len(pack_pool),pack_count-len(tied_ids)))
   pack_ids=tied_ids+others
   personal=CHARACTERS[run.get('shop_pack_character',run['character'])]['pack']
@@ -1145,7 +1160,9 @@ def install(g):
   _out=[];_all_mis=[]
   for i in indices:
    _cards=buy(run,i,rng);_all_mis+=run.get('last_misprints',[])
-   _out.append(dict(kind=run['shop'][i]['kind'],id=run['shop'][i]['id'],cards=_cards))
+   item=run['shop'][i]
+   receipt=acts.pack_receipt(run,item['id'],_cards,personal=True) if item['kind']=='pack' else dict(id=item['id'],cards=_cards)
+   _out.append(dict(kind=item['kind'],**receipt))
   run['last_misprints']=_all_mis
   return _out
  for name in ['acquire_relic','load_run','save','open_pack','new_run','copy_deck','engine_deck','routes','prepare_duel','opponent_deck','rewards','finish_duel','restock','reroll_price','reroll_shop','lock_relic','sell_relic','buy','buy_many','unlock_text','unlock_rule','update_profile']:

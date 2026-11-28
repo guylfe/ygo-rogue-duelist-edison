@@ -1,5 +1,5 @@
 {
- "_notes": "Two initial characters remain available. The 34 unlockable characters split evenly: 17 unique character victories and 17 distinct gameplay challenges. Existing unlocks are preserved. Starting relic IDs must be unique across all playable characters.",
+ "_notes": "Regular duelists unlock through milestones in their home Act. Copycat and Dueling Engine retain their original special unlocks. Starting relic IDs must be unique across all playable characters.",
  "starting_relics": {
   "0": "mage",
   "1": "dragon",
@@ -137,7 +137,7 @@
   "21": {
    "metric": "tribute_roster",
    "target": 1,
-   "description": "Win a duel with 6 or 7 Level 5+ monsters in your Main Deck"
+   "description": "Win a duel with at least 6 Level 5+ monsters in your Main Deck"
   },
   "22": {
    "metric": "ten_thousand_lp",
@@ -208,6 +208,51 @@
    "metric": "highest_challenge_level",
    "target": 5,
    "description": "Beat Challenge Level 5 with any character"
+  }
+ },
+ "campaign_roster": {
+  "2": {
+   "starters": [98, 99],
+   "unlocks": {
+    "100": {"metric": "fusion_win", "target": 1, "description": "Win an Act II duel after summoning a Fusion Monster"},
+    "101": {"metric": "victories", "target": 3, "description": "Win 3 Act II duels"},
+    "102": {"metric": "duel_coins", "target": 250, "description": "Earn 250 coins from Act II duel victory payouts"},
+    "103": {"metric": "boss_wins", "target": 2, "description": "Defeat 2 Act II bosses"},
+    "104": {"metric": "act_clear", "target": 1, "description": "Clear Act II"},
+    "105": {"metric": "singles_bought", "target": 6, "description": "Buy 6 single cards in Act II shops"},
+    "112": {"metric": "six_attributes", "target": 1, "description": "Win an Act II duel with all six monster Attributes in your Main Deck"},
+    "113": {"metric": "burn_win", "target": 1, "description": "Win an Act II duel after dealing at least 1,500 effect damage"},
+    "114": {"metric": "equip_win", "target": 1, "description": "Win an Act II duel after activating 2 Equip Spells"},
+    "115": {"metric": "big_summons_win", "target": 1, "description": "Win an Act II duel after summoning 3 Level 5+ monsters"},
+    "116": {"metric": "special_summons_win", "target": 1, "description": "Win an Act II duel after 3 Special Summons"},
+    "117": {"metric": "monster_types_win", "target": 1, "description": "Win an Act II duel with at least 4 monster Types in your Main Deck"},
+    "118": {"metric": "forty_cards_win", "target": 1, "description": "Win an Act II duel with at least 40 cards in your Main Deck"},
+    "119": {"metric": "low_lp_boss", "target": 1, "description": "Defeat an Act II boss with 3,000 LP or less before healing"},
+    "120": {"metric": "dice_and_coins", "target": 4, "description": "Roll 4 dice and toss 4 coins in Act II duels"},
+    "121": {"metric": "battle_destroy_win", "target": 1, "description": "Win an Act II duel after destroying 3 monsters by battle"},
+    "122": {"metric": "attacks_win", "target": 1, "description": "Win an Act II duel after declaring 4 attacks"},
+    "123": {"metric": "long_win", "target": 1, "description": "Win an Act II duel on turn 12 or later"}
+   }
+  },
+  "3": {
+   "starters": [106, 107],
+   "unlocks": {
+    "108": {"metric": "synchro_win", "target": 1, "description": "Win an Act III duel after summoning a Synchro Monster"},
+    "109": {"metric": "singles_bought", "target": 6, "description": "Buy 6 single cards in Act III shops"},
+    "110": {"metric": "boss_wins", "target": 2, "description": "Defeat 2 Act III bosses"},
+    "111": {"metric": "act_clear", "target": 1, "description": "Clear Act III"},
+    "124": {"metric": "trap_win", "target": 1, "description": "Win an Act III duel after activating 2 Trap Cards"},
+    "125": {"metric": "normal_summons_boss", "target": 1, "description": "Defeat an Act III boss after 3 Normal Summons"},
+    "126": {"metric": "battle_damage_win", "target": 1, "description": "Win an Act III duel after dealing at least 5,000 battle damage"},
+    "127": {"metric": "five_banished", "target": 1, "description": "Win an Act III duel with 5 or more cards banished across both players"},
+    "128": {"metric": "recover_win", "target": 1, "description": "Win an Act III duel after recovering at least 1,500 LP"},
+    "129": {"metric": "boss_wins", "target": 5, "description": "Defeat 5 Act III bosses"},
+    "130": {"metric": "grave_summon_win", "target": 1, "description": "Win an Act III duel after Special Summoning a monster from the Graveyard"},
+    "131": {"metric": "monster_effects_win", "target": 1, "description": "Win an Act III duel after activating 3 monster effects"},
+    "132": {"metric": "challenge_clear", "target": 1, "description": "Clear Act III at Challenge Level 1 or higher"},
+    "133": {"metric": "singleton_win", "target": 1, "description": "Win an Act III duel with no duplicate cards in your Main Deck"},
+    "134": {"metric": "quick_win", "target": 1, "description": "Win an Act III duel by turn 10"}
+   }
   }
  }
 }

@@ -3,6 +3,7 @@ import json
 from collections import Counter
 from functools import lru_cache
 from pathlib import Path
+from random import Random
 
 CONFIG = json.loads((Path(__file__).parent / 'data/campaign-acts.json').read_text(encoding='utf8'))
 ACTS = CONFIG['acts']
@@ -14,9 +15,38 @@ LATER_OPPONENTS = {
     ).items()
 }
 
+# Retail boosters become the corresponding character offer in the three-act
+# campaign. The original records still describe retail editions and older logs.
+RETAIL_BOOSTERS = {
+    'EN-DP1': 'DRAFT-JADEN-YUKI',
+    'EN-DP03': 'DRAFT-JADEN-YUKI',
+    'EN-DP06': 'DRAFT-JADEN-YUKI',
+    'EN-DP2': 'DRAFT-CHAZZ-PRINCETON',
+    'EN-DP04': 'DRAFT-ZANE-TRUESDALE',
+    'EN-DP05': 'DRAFT-ASTER-PHOENIX',
+    'EN-DP07': 'DRAFT-JESSE-ANDERSON',
+    'EN-DP08': 'DRAFT-YUSEI-FUDO',
+    'EN-DP09': 'DRAFT-YUSEI-FUDO',
+    'EN-DPYG': 'DRAFT-YUGI-MUTO',
+    'EN-DPKB': 'DRAFT-SETO-KAIBA',
+}
+RETAIL_CHARACTERS = frozenset(RETAIL_BOOSTERS.values())
+
 
 def active(run):
     return bool(run and run.get('act'))
+
+
+def consolidates(run):
+    return active(run) and run.get('history_mode') != 'tag'
+
+
+def offer_id(pid):
+    return RETAIL_BOOSTERS.get(pid, pid) if isinstance(pid, str) else pid
+
+
+def unique_offers(ids):
+    return list(dict.fromkeys(map(offer_id, ids)))
 
 
 def era(run):
@@ -39,11 +69,25 @@ def opponent_rules(run):
         return later_opponents(run)
 
 
-def encounter_opponents(run, deck_round):
+def route_limited(run):
+    return (not run.get('encore_active') and run.get('later_route_act') == run.get('act')
+            and bool(opponent_rules(run)))
+
+
+def encounter_opponents(run, deck_round, *, route_round=None, reserved=()):
     from content import eligible_opponents
     rules = opponent_rules(run)
     if rules:
-        return [*rules['home'], *rules['returning']]
+        home = rules['home']
+        if not route_limited(run):
+            return [*home, *rules['returning']]
+        rd = run['round'] if route_round is None else route_round
+        if rd in (0, ACTS[run['act'] - 1]['duels'] - 1):
+            return list(home)
+        guests = rules.get('route_guests', rules['returning'])
+        # A reserved boss takes the next guest slot only while protecting its lead-in routes.
+        fought_or_reserved = set(run.get('defeated_opponents', ())).union(reserved)
+        return [*home, *guests] if len(fought_or_reserved.intersection(guests)) < 2 else list(home)
     return eligible_opponents(deck_round, run.get('loop', 0), run.get('act'))
 
 
@@ -56,15 +100,32 @@ def opponent_lp(run):
     return max(8000, base) if run.get('challenge_level', 0) >= 1 else base
 
 
-def returning_record(game, run, opponent):
+def returning_deck(run, opponent):
     rules = opponent_rules(run)
-    deck = rules and rules['returning'].get(opponent)
+    return rules and rules['returning'].get(opponent)
+
+
+def returning_record(game, run, opponent):
+    deck = returning_deck(run, opponent)
     if deck:
         card_id = lambda name: game.BY_NAME[name]['id']
-        return dict(name=deck['theme'], tier=min(3, run['round']//3+1), side=[],
+        return dict(name=deck['theme'], variant_act=run['act'], tier=min(3, run['round']//3+1), side=[],
                     main=[card_id(name) for name, copies in deck['main'].items() for _ in range(copies)],
                     extra=[card_id(name) for name in deck['extra']],
                     preview=[card_id(name) for name in deck['preview']])
+
+
+def duel_variant(game, run):
+    duel = run.get('duel') or {}
+    if 'opponent_variant_act' in duel:
+        return duel['opponent_variant_act']
+    if run.get('encore_active') or not duel.get('enemy_deck'):
+        return None
+    # A duel already started on the old build can be identified by its saved deck.
+    record = returning_record(game, run, duel.get('opponent', run.get('opponent')))
+    if record and Counter(duel['enemy_deck']) == Counter(record['main'] + record['extra']):
+        return record['variant_act']
+    return None
 
 
 def base_minimum(run):
@@ -87,6 +148,9 @@ def edition(run, pack, *, personal=False):
     """Project every slot and rarity of a pack into the current act."""
     if not active(run):
         return pack
+    if consolidates(run) and pack['id'] in RETAIL_BOOSTERS:
+        from content import PACK_BY_ID
+        pack = PACK_BY_ID[offer_id(pack['id'])]
     exceptions = {}
     if personal and pack.get('goat_exceptions') and run.get('history_mode') != 'tag':
         from content import EDISON_DUELISTS
@@ -105,15 +169,52 @@ def edition(run, pack, *, personal=False):
             slots = {key: pack[key] + [cid for cid in goat[key] if cid not in signature] for key in ('common','rare')}
             rarities.update(pack['rarities'])
         pack = dict(pack, **slots, rare_display=slots['rare'], rarities=rarities)
-    from campaign import card_identity, normal_starter
+    from campaign import normal_starter
     card_fields = ('common', 'rare', 'starter_support', 'rare_display')
     early = set(exceptions.get('common', []) + exceptions.get('rare', []))
     result = dict(pack, **{k: [cid for cid in pack[k] if cid in early or allows(run, cid)] for k in card_fields if k in pack})
     ids = result['common'] + result['rare'] + result.get('starter_support', [])
     result['rarities'] = {str(cid): pack.get('rarities', {}).get(str(cid), []) for cid in ids}
+    if consolidates(run):
+        result = add_retail_cards(run, result, ids)
+        ids = result['common'] + result['rare'] + result.get('starter_support', [])
     if not any(normal_starter(cid) for cid in ids):
         result['shop_only'] = True
     return result
+
+
+def add_retail_cards(run, pack, ids):
+    from campaign import card_identity
+    from content import PACK_BY_ID
+    sources = [source for source, owner in RETAIL_BOOSTERS.items()
+               if owner == pack['id'] and pack_act(source) <= era(run)]
+    if not sources:
+        return pack
+    seen = {card_identity(cid) for cid in ids}
+    # An existing character card keeps its original slot and weight. Each new
+    # identity enters once, in its retail slot, using the standard draw weight.
+    pack.setdefault('rare_display', list(pack['rare']))
+    for source in sources:
+        retail = PACK_BY_ID[source]
+        for slot in ('common', 'rare'):
+            for cid in retail[slot]:
+                if not allows(run, cid) or card_identity(cid) in seen:
+                    continue
+                seen.add(card_identity(cid))
+                pack[slot].append(cid)
+                if slot == 'rare':
+                    pack['rare_display'].append(cid)
+                pack['rarities'][str(cid)] = retail['rarities'][str(cid)]
+    return pack
+
+
+def pack_receipt(run, pid, cards, *, personal=False):
+    receipt = dict(id=pid, cards=cards)
+    if consolidates(run) and pid in RETAIL_CHARACTERS:
+        from content import PACK_BY_ID
+        pack = edition(run, PACK_BY_ID[pid], personal=personal)
+        receipt['rare_display'] = [cid for cid in cards if cid in pack.get('rare_display', [])]
+    return receipt
 
 
 @lru_cache(maxsize=None)
@@ -124,11 +225,12 @@ def openable(pid, act):
     return len({card_identity(cid) for cid in pack['common'] + pack['rare']}) >= 9
 
 
-def native_packs(act, starters=False):
+def native_packs(act, starters=False, *, consolidate=True):
     from content import PACKS
-    return [p['id'] for p in PACKS
-            if not p.get('draft_only') and pack_act(p['id']) == act and openable(p['id'], act)
-            and (not starters or not edition({'act': act}, p).get('shop_only'))]
+    packs = [p['id'] for p in PACKS
+             if not p.get('draft_only') and pack_act(p['id']) == act and openable(p['id'], act)
+             and (not starters or not edition({'act': act}, p).get('shop_only'))]
+    return unique_offers(packs) if consolidate else packs
 
 
 def draft_rotations(preferred, rng, duelist=None, *, cards_only=False):
@@ -141,11 +243,13 @@ def draft_rotations(preferred, rng, duelist=None, *, cards_only=False):
         # with Gladiator Beast or LIGHT support. Edison pairs TDGS with Tuners and Synchros.
         featured = rules['featured_pack']
         lineup = [featured] if featured in native else []
-        companions = [pid for pid in rules['companion_packs'] if pid in native and pid not in lineup]
+        companions = [pid for pid in unique_offers(rules['companion_packs']) if pid in native and pid not in lineup]
         if companions:
             lineup.append(rng.choice(companions))
-        if duelist and duelist['home_act'] == act and duelist['support'] in native and duelist['support'] not in lineup:
-            lineup.append(duelist['support'])
+        if duelist and duelist['home_act'] == act:
+            support = offer_id(duelist['support'])
+            if support in native and support not in lineup:
+                lineup.append(support)
         if act == 1:
             lineup.extend(pid for pid in starters if pid in native and pid not in lineup)
         if act == 1:
@@ -160,10 +264,93 @@ def draft_rotations(preferred, rng, duelist=None, *, cards_only=False):
 
 
 def native_rotation(run, act):
-    # Existing campaigns retain the lineups and offers they started with.
+    consolidate = consolidates(run)
     if 'pack_rotations' not in run:
-        return native_packs(act)
-    return run['pack_rotations'][str(act)]
+        return native_packs(act, consolidate=consolidate)
+    saved = run['pack_rotations'][str(act)]
+    if not consolidate:
+        return saved
+    # Keep the saved seed and order. Refill only slots collapsed by the merge.
+    lineup = unique_offers(saved)
+    if len(lineup) < len(saved):
+        lineup.extend(offer_replacements(run, native_packs(act), lineup, len(saved) - len(lineup), f'rotation:{act}'))
+    return lineup
+
+
+def offer_replacements(run, pool, used, count, context):
+    choices = [pid for pid in pool if pid not in used]
+    seed = run.get('pack_seed') or sorted(map(str, used))
+    rng = Random(f"{seed}:{context}")
+    return rng.sample(choices, min(len(choices), count))
+
+
+def migrate_route_rewards(run):
+    rewards = run.get('route_rewards', {})
+    changed = False
+    used = {offer_id(reward['pack']) for reward in rewards.values()}
+    selected = str(run.get('opponent'))
+    seen = set()
+    for route in sorted(rewards, key=lambda route: route != selected):
+        reward = rewards[route]
+        previous = reward['pack']
+        pid = offer_id(previous)
+        if pid in RETAIL_CHARACTERS and pid in seen:
+            spare = offer_replacements(run, rotation(run), used | {personal_pack(run)}, 1, f'route:{era(run)}:{route}')
+            if spare:
+                pid = spare[0]
+                used.add(pid)
+        if pid != previous:
+            reward['pack'] = pid
+            changed = True
+        seen.add(pid)
+    reward = run.get('shop_reward')
+    if reward and reward.get('pack') in RETAIL_BOOSTERS:
+        reward['pack'] = offer_id(reward['pack'])
+        changed = True
+    return changed
+
+
+def migrate_booster_offers(run):
+    """Upgrade live offers. Purchased cards and historical pack IDs stay as saved."""
+    if not consolidates(run):
+        return False
+    changed = False
+    for field in ('carried_packs', 'opened_packs', 'offered_packs'):
+        if field in run and (ids := unique_offers(run[field])) != run[field]:
+            run[field] = ids
+            changed = True
+    if run.get('pinned_pack') in RETAIL_BOOSTERS:
+        run['pinned_pack'] = offer_id(run['pinned_pack'])
+        changed = True
+    changed = migrate_route_rewards(run) or changed
+    if (pending := run.get('act_transition')):
+        for field in ('choices', 'carryable'):
+            previous = pending[field]
+            ids = unique_offers(previous)
+            if field == 'choices' and len(ids) < len(previous):
+                incoming = pending['incoming']
+                ids.extend(offer_replacements(run, native_rotation(run, incoming), ids,
+                                               len(previous) - len(ids), f'transition:{incoming}'))
+            if ids != previous:
+                pending[field] = ids
+                changed = True
+    stock = run.get('shop', [])
+    for owner in dict.fromkeys(RETAIL_BOOSTERS.values()):
+        matches = [(i, item) for i, item in enumerate(stock)
+                   if item['kind'] == 'pack' and offer_id(item['id']) == owner]
+        if not matches:
+            continue
+        keep, item = max(matches, key=lambda pair: (pair[1]['sold'], pair[1].get('opponent_pack', False)))
+        if item['id'] != owner:
+            item['id'] = owner
+            changed = True
+        if len(matches) > 1:
+            item['opponent_pack'] = any(entry.get('opponent_pack', False) for _, entry in matches)
+            for i, _ in reversed(matches):
+                if i != keep:
+                    del stock[i]
+            changed = True
+    return changed
 
 
 def rotation(run, draft_relic=False):
@@ -173,7 +360,8 @@ def rotation(run, draft_relic=False):
     act = era(run)
     # Draft packs are available through their signature start or the dedicated relic.
     themed = [p['id'] for p in PACKS if p.get('draft_only') and p.get('home_act',act)==act and openable(p['id'], act)] if draft_relic else []
-    return list(dict.fromkeys(native_rotation(run, act) + run.get('carried_packs', []) + themed))
+    ids = native_rotation(run, act) + run.get('carried_packs', []) + themed
+    return unique_offers(ids) if consolidates(run) else list(dict.fromkeys(ids))
 
 
 def home_pack(run, character):
@@ -196,12 +384,16 @@ def personal_pack(run):
 
 def shop_pack_available(run, pid):
     from content import PACK_BY_ID
+    if consolidates(run):
+        pid = offer_id(pid)
     pack = PACK_BY_ID.get(pid, {})
     return bool(pid) and (pid == personal_pack(run) or pid in rotation(run)
                           or (pack.get('home_act') == era(run) and not run.get('loop')))
 
 
 def register_pack(run, pid):
+    if consolidates(run):
+        pid = offer_id(pid)
     if active(run) and pid not in run.setdefault('opened_packs', []):
         run['opened_packs'].append(pid)
 
@@ -220,6 +412,8 @@ def pin_options(run):
 def pin(run, pid):
     if run.get('stage') not in ('draft', 'shop'):
         raise ValueError('Mark a booster between duels.')
+    if consolidates(run):
+        pid = offer_id(pid)
     if pid and pid not in pin_options(run):
         raise ValueError('Open this booster in the current rotation before marking it.')
     run['pinned_pack'] = pid or None
@@ -311,14 +505,18 @@ def transition_offer(run, rng):
     # Rotate the preview once at the boundary. Persist it so returning to the
     # run never rerolls the choices or awards cards twice.
     offered = list(dict.fromkeys(run.get('offered_packs', []) + (run.get('pack_ids', []) if era(run) == 1 else [])))
+    if consolidates(run):
+        offered = unique_offers(offered)
     carryable = [pid for pid in offered if pid in PACK_BY_ID and openable(pid, incoming)]
     anchor = ACTS[incoming - 1]['featured_pack']
     choices = [anchor] if anchor in packs else []
     duelist = EDISON_DUELISTS.get(run.get('character'))
     if duelist and duelist['home_act']==incoming:
-        if duelist['support'] in packs and duelist['support'] not in choices:
-            choices.append(duelist['support'])
-        choices.append(duelist['pack'])
+        support = offer_id(duelist['support']) if consolidates(run) else duelist['support']
+        if support in packs and support not in choices:
+            choices.append(support)
+        if duelist['pack'] not in choices:
+            choices.append(duelist['pack'])
     eligible = [pid for pid in packs if pid not in choices]
     count = CONFIG['transition_choices'] + (2 if run.get('cards_only') else 0)
     choices += rng.sample(eligible, min(len(eligible), count - len(choices)))
@@ -331,6 +529,11 @@ def transition(game, run, value, rng):
     if run.get('stage') != 'act_transition' or not offer or run.get('reward_slots', {}).get('pending') or run.get('cursed_offer'):
         raise ValueError('Finish the victory rewards before choosing era boosters.')
     incoming, carry = value.get('packs'), value.get('carry')
+    if consolidates(run):
+        if isinstance(incoming, list):
+            incoming = list(map(offer_id, incoming))
+        if isinstance(carry, list):
+            carry = list(map(offer_id, carry))
     if not isinstance(incoming, list) or len(incoming) != offer['picks'] or any(p not in offer['choices'] for p in incoming):
         raise ValueError('Select the required number of incoming boosters.')
     if not isinstance(carry, list) or len(carry) > offer['carry_limit'] or len(set(carry)) != len(carry) or any(p not in offer['carryable'] for p in carry):
@@ -340,12 +543,17 @@ def transition(game, run, value, rng):
     nxt.update(act=offer['incoming'], round=0, stage='shop', shop=[], carried_packs=list(carry),
                offered_packs=[], defeated_opponents=[], last_deck_minimum_increase=0)
     for key in ('act_transition', 'next_boss', 'tutorial_variants', 'cursed_offer', 'free_packs', 'duel', 'mobile_duel',
-                'reward_target', 'reward_targets'):
+                'reward_target', 'reward_targets', 'later_route_act'):
         nxt.pop(key, None)
+    rules = later_opponents(nxt)
+    # A full native route must be possible even when the player is one of the natives.
+    # Mark the policy only on entry so existing acts keep their announced encounters.
+    if rules and len(set(rules['home'])) > ACTS[nxt['act'] - 1]['duels']:
+        nxt['later_route_act'] = nxt['act']
     if not shop_pack_available(nxt,nxt.get('pinned_pack')):
         nxt['pinned_pack'] = None
     nxt['new_cards_from'] = len(nxt['pool'])
-    opened = [dict(id=pid, cards=game.open_pack(pid, rng, nxt)) for pid in incoming]
+    opened = [pack_receipt(nxt, pid, game.open_pack(pid, rng, nxt)) for pid in incoming]
     from content import copies_deck, fixed_deck
     for pack in opened:
         nxt['pool'].extend(pack['cards'])

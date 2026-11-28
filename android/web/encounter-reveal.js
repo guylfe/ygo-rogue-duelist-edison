@@ -2,12 +2,14 @@ import {freeJarUse,revealPrice} from './jar-relics.js';
 import {rewardIcon} from './reward-icons.js';
 import {coinLabel} from './coin-label.js';
 import {isFavouritePack} from './pack-favourites.js';
+import {routeOpponentName} from './encounter-name.js';
 // Favourite packs show a star on the opponent's guaranteed pack (Discord, Nov 15: players opened each pack to check).
 export const favouriteMark=id=>isFavouritePack(id)?' <span class="pack-fav-mark" title="Favourite pack" aria-label="Favourite pack">★</span>':'';
 export const escapeEncounter=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const esc=escapeEncounter;
 const ucTag='<span class="uc-opponent-tag" title="Ultimate Collector opponent" aria-label="Ultimate Collector opponent">UC</span>';
 export const hasSpyglass=r=>(r.artifacts||[]).includes('deck_spyglass')||r.mirror_copy==='deck_spyglass';
+export const knowsOpponent=(r,i)=>(r.round+1)%3===0||hasSpyglass(r)||(r.revealed_opponents||[]).includes(i);
 export const bossRerollPrice=r=>{if(freeJarUse(r,'cyber_jar','boss'))return 0;const n=Math.max(0,Number(r.boss_rerolls)||0);return n<2?[30,50][n]:100+(n-2)*50};
 // What revealing costs: coins, or LP under Blood Toll in solo runs (payment.py), keeping 1 LP.
 export function revealCost(r){const price=revealPrice(r),lp=(r.artifacts||[]).includes('cursed_blood_toll')&&r.history_mode!=='tag';return lp?{amount:price*10,unit:'LP',can:r.lp-price*10>=1}:{amount:price,unit:'coins',can:r.gold>=price}}
@@ -15,8 +17,8 @@ export const revealCostLabel=cost=>cost.amount===0?'Free':cost.unit==='LP'?`<img
 // An unknown opponent's portrait is itself the reveal button, with the cost on the frame (2026-10-29).
 // Tag passes tag:true so its own handler answers the reveal; data-do reached the solo one (Discord 2026-11-08).
 export function encounterPortrait(content,r,i,{revealAttr='data-opponent',disabled=false,tag=false}={}){
- const c=content.characters[i],boss=(r.round+1)%3===0,tier=r.loop?4:Math.min(3,Math.floor(r.round/3)+1);
- if(boss||hasSpyglass(r)||(r.revealed_opponents||[]).includes(i))return `<div data-tier="${tier}" class="duelist-hero encounter-hero" style="background-image:url('assets/${esc(c.background||'character-backgrounds/'+i+'.jpg')}')"><img src="assets/${esc(c.sprite)}" alt="${esc(c.name)}"><h2>${esc(c.name)}</h2>${c.ultimate_collector||r.fallen_routes?.[i]?ucTag:''}</div>`;
+ const c=content.characters[i],tier=r.loop?4:Math.min(3,Math.floor(r.round/3)+1);
+ if(knowsOpponent(r,i)){const name=esc(routeOpponentName(content,r,i));return `<div data-tier="${tier}" class="duelist-hero encounter-hero" style="background-image:url('assets/${esc(c.background||'character-backgrounds/'+i+'.jpg')}')"><img src="assets/${esc(c.sprite)}" alt="${name}"><h2>${name}</h2>${c.ultimate_collector||r.fallen_routes?.[i]?ucTag:''}</div>`;}
  const cost=revealCost(r);
  return `<button type="button" data-tier="${tier}" class="duelist-hero encounter-hero encounter-mystery encounter-reveal" ${tag?'data-tag':'data-do'}="reveal-opponent" ${revealAttr}="${i}" ${!cost.can||disabled?'disabled':''} aria-label="Unknown opponent. Reveal for ${cost.amount===0?'free':cost.amount+' '+cost.unit}"><span>?</span><b class="reveal-cost"><span>Reveal</span><span class="reveal-sep"> · </span><span>${revealCostLabel(cost)}</span></b></button>`;
 }
@@ -48,15 +50,16 @@ export function bossControls(r,{tag=false,disabled=false,action='boss-reroll'}={
 // Every timer and animation is owned by the overlay and cleaned up on navigation.
 export async function playEncounterReveal({content,opponents,run=null,voice=()=>{},players=[0],collectors={},lp=[8000,8000],slot=false,sound=()=>{},tickSound=()=>{},stopTick=()=>{},active=()=>true,reduced=matchMedia('(prefers-reduced-motion: reduce)').matches}){
  const overlay=document.createElement('section');overlay.className='encounter-cinematic '+(slot?'boss-reel':'duel-intro');overlay.setAttribute('role','status');
- const portrait=(i,uc=false)=>{const c=content.characters[i];return `<div class="versus-portrait"><img src="assets/${esc(c.sprite)}" alt="${esc(c.name)}"><strong>${esc(c.name)}</strong>${uc?ucTag:''}</div>`};
+ const enemyName=i=>routeOpponentName(content,run,i);
+ const portrait=(i,opposing=false)=>{const c=content.characters[i],name=esc(opposing?enemyName(i):c.name);return `<div class="versus-portrait"><img src="assets/${esc(c.sprite)}" alt="${name}"><strong>${name}</strong>${opposing&&collectors[i]?ucTag:''}</div>`};
  const life=n=>`<div class="versus-lp"><small>LP</small><strong>${Number(lp[n]).toLocaleString()}</strong></div>`;
- overlay.innerHTML=`<div class="encounter-aura"></div><div class="cinematic-copy"><h1>${slot?'FATE IS TURNING':"IT’S TIME TO DUEL"}</h1></div>${slot?`<div class="cinematic-reels">${opponents.map(i=>`<div class="cinematic-window slot-window"><img alt=""><strong></strong></div>`).join('')}</div>`:`<div class="versus-stage"><div class="versus-side versus-player"><div class="versus-portraits">${players.map(i=>portrait(i)).join('')}</div>${life(0)}</div><strong class="versus-mark">VS</strong><div class="versus-side versus-opponent" aria-hidden="true" style="visibility:hidden;opacity:0"><div class="versus-portraits">${opponents.map(i=>portrait(i,!!collectors[i])).join('')}</div>${life(1)}</div></div>`}<div class="cinematic-line"></div>`;
+ overlay.innerHTML=`<div class="encounter-aura"></div><div class="cinematic-copy"><h1>${slot?'FATE IS TURNING':"IT’S TIME TO DUEL"}</h1></div>${slot?`<div class="cinematic-reels">${opponents.map(i=>`<div class="cinematic-window slot-window"><img alt=""><strong></strong></div>`).join('')}</div>`:`<div class="versus-stage"><div class="versus-side versus-player"><div class="versus-portraits">${players.map(i=>portrait(i)).join('')}</div>${life(0)}</div><strong class="versus-mark">VS</strong><div class="versus-side versus-opponent" aria-hidden="true" style="visibility:hidden;opacity:0"><div class="versus-portraits">${opponents.map(i=>portrait(i,true)).join('')}</div>${life(1)}</div></div>`}<div class="cinematic-line"></div>`;
  // Duel 9's boss comes out of the dark instead of the reel. The boss screen, and its reroll, follow as usual.
  const finale=slot&&run?.round===8&&opponents.length===1;
- if(finale){const c=content.characters[opponents[0]];overlay.classList.add('final-reveal');overlay.innerHTML=`<div class="encounter-aura"></div><h1 class="final-title">ONE LAST DUELIST</h1><div class="final-figure"><img src="assets/${esc(c.sprite)}" alt=""><img class="final-lit" src="assets/${esc(c.sprite)}" alt=""></div><strong class="final-name">${esc(c.name)}</strong>`}
+ if(finale){const c=content.characters[opponents[0]];overlay.classList.add('final-reveal');overlay.innerHTML=`<div class="encounter-aura"></div><h1 class="final-title">ONE LAST DUELIST</h1><div class="final-figure"><img src="assets/${esc(c.sprite)}" alt=""><img class="final-lit" src="assets/${esc(c.sprite)}" alt=""></div><strong class="final-name">${esc(enemyName(opponents[0]))}</strong>`}
  const concealed=slot?[...document.querySelectorAll('.page.boss .routes')].map(el=>({el,visibility:el.style.visibility,hidden:el.getAttribute('aria-hidden')})):[];for(const x of concealed){x.el.style.visibility='hidden';x.el.setAttribute('aria-hidden','true')}
  document.body.append(overlay);const windows=[...overlay.querySelectorAll('.slot-window')],animations=[];let timer,watch,spin;
- const show=(ids)=>windows.forEach((w,n)=>{const c=content.characters[ids[n]];w.querySelector('img').src='assets/'+c.sprite;w.querySelector('img').alt=c.name;w.querySelector('strong').textContent=c.name});
+ const show=(ids)=>windows.forEach((w,n)=>{const i=ids[n],c=content.characters[i],name=i===opponents[n]?enemyName(i):c.name;w.querySelector('img').src='assets/'+c.sprite;w.querySelector('img').alt=name;w.querySelector('strong').textContent=name});
  const duration=reduced?1500:finale?4000:slot?2300:2800,playBossVoice=()=>{const file=bossVoice(content,run,opponents[0],!!collectors[opponents[0]]);if(file)voice(file)};
  try{
   sound(slot&&!finale?'diceroll':'nextturn',slot&&!finale?.18:.25,slot&&!finale?1450:0);const initial=(content.playable||content.characters.map((_,i)=>i)).filter(i=>!opponents.includes(i));show(slot&&!reduced?opponents.map((_,n)=>initial[n%initial.length]):opponents);

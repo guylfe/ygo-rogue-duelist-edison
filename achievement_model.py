@@ -1,14 +1,20 @@
-import campaign as game,storage,unlocks
-from content import CHARACTERS,PLAYABLE_IDS,EDISON_DUELISTS
+import campaign as game,storage,unlocks,character_progression
+from content import CHARACTERS,PLAYABLE_IDS
 
 def entries(profile=None):
  p=profile or storage.profile();rows=[]
- for i in PLAYABLE_IDS[2:]:
-  if i in EDISON_DUELISTS:continue
-  metric,target=game.unlock_rule(i)
-  value=int(int(metric.split(':')[1]) in p['won_as']) if metric.startswith('won_as:') else p.get(metric,0)
-  if 'character:'+str(i) in p.get('synced_achievements',[]):value=max(value,target)
-  rows.append(dict(id='character:'+str(i),name=CHARACTERS[i]['name'],reward='Unlock duelist',description=game.unlock_text(i),value=value,target=target,done=value>=target or 'character:'+str(i) in p.get('synced_achievements',[]),cumulative=metric in ('victories','wins','singles_bought','dice_and_coins'),testing=i in p['unlocked'] and value<target))
+ for i in PLAYABLE_IDS:
+  if i in character_progression.STARTERS:continue
+  act,metric,target,description=character_progression.rule(i)
+  value=character_progression.value(p,i)
+  key='character:'+str(i)
+  synced=key in p.get('synced_achievements',[])
+  if synced:value=max(value,target)
+  done=value>=target
+  unlocked=i in p['unlocked']
+  rows.append(dict(id=key,name=CHARACTERS[i]['name'],reward='Unlock duelist',description=description,
+                   value=value,target=target,done=done,unlocked=unlocked,act=None if i in character_progression.SPECIAL else act,
+                   cumulative=metric in character_progression.CUMULATIVE,testing=unlocked and not done and bool(p.get('unlock_all'))))
  import sleeve_progress
  rows+=sleeve_progress.achievements(p)
  for row in rows:

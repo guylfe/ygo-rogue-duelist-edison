@@ -25,7 +25,7 @@ def planned(run):
  if not active(run) or not isinstance(plan,dict) or run.get('round',0)>=RUN_LENGTH:return None
  rd=boss_round(run['round']);loop=run.get('loop',0);opponent=plan.get('opponent')
  if plan.get('loop')!=loop or plan.get('round')!=rd or type(opponent) is not int:return None
- if opponent==run['character'] or opponent in run.get('defeated_opponents',[]) or opponent not in encounter_opponents(run,rd):return None
+ if opponent==run['character'] or opponent in run.get('defeated_opponents',[]) or opponent not in encounter_opponents(run,rd,route_round=rd):return None
  return plan
 
 def fits(run,curses):

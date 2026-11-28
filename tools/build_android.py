@@ -53,11 +53,12 @@ def sync():
    cid=token['id'];row=db.execute('SELECT name,desc,type,level,atk,def,race,attribute FROM texts JOIN datas USING(id) WHERE id=?',(cid,)).fetchone()
    if row:token_cards.append(dict(id=cid,name=row[0],desc=row[1],type='Token',level=row[3]&255,atk=row[4],defense=row[5],race='Token',attribute='',data=dict(type=row[2]),strings=[]))
  custom_relic_art=json.loads((ROOT/'data/relic-custom-art.json').read_text(encoding='utf8'))
- from campaign_acts import ACTS as campaign_acts
+ from campaign_acts import ACTS as campaign_acts,LATER_OPPONENTS
  meta=dict(campaignActs=campaign_acts,tutorial=json.loads((ROOT/'data/tutorial.json').read_text(encoding='utf8')),preconstructedDecks=[{key:deck[key] for key in ('id','name','date','art','cards')} for deck in json.loads((ROOT/'data/preconstructed.json').read_text(encoding='utf8'))['decks']],characters=content.CHARACTERS,playable=content.PLAYABLE_IDS,packs=content.PACKS,artifacts=content.ARTIFACTS,retiredArtifacts=sorted(content.RETIRED_ARTIFACTS),artifactInfo={key:dict(value,art=custom_relic_art.get(key) or next((c['id'] for c in game.CARDS if c['name'].casefold()==str(value['art']).casefold()),game.BY_NAME['Pot of Greed']['id']),**({'parts':list(approved_relics.CURSED_PARTS[key])} if key in approved_relics.CURSED_PARTS else {})) for key,value in content.ART_INFO.items()},curses=content.CURSES,runLength=content.RUN_LENGTH,cards=game.CARDS,tokenCards=token_cards)
  from duel_rewards import RULES, VICTORY_ONLY, SECRET
  # Hidden coin feats (2026-11-20) stay out of every public list; the shop Coin scorecard shows the ones a player found.
  meta['battleBonusLabels']=[label for metric,_,label,_ in RULES if metric not in SECRET]
+ meta['returningOpponents']={act:list(rules['returning']) for act,rules in LATER_OPPONENTS.items()}
  meta['secretCoinRules']=[dict(id=metric,label=label,coins=coins) for metric,_,label,coins in RULES if metric in SECRET]
  import relic_fusions
  meta['fusedRelics']=sorted(relic_fusions.KEYS)

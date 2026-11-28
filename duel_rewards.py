@@ -101,7 +101,7 @@ def metrics(run,events,by_id):
    if card:
     summoned.add(card['id']);races.add(card['race']);attrs.add(card['attribute'])
     m['high_level']+=card['level']>=5;m['low_level']+=1<=card['level']<=3;m['level_eight']+=card['level']>=8
-    for key,mask in [('normal_monsters',16),('effect_monsters',32),('fusion',64),('ritual',128)]:m[key]+=bool(typ&mask)
+    for key,mask in [('normal_monsters',16),('effect_monsters',32),('fusion',64),('ritual',128),('synchro',0x2000)]:m[key]+=bool(typ&mask)
   elif kind=='activate':
    if typ&1:m['effects']+=1;effect_names.add(card['id'])
    if typ&2:
