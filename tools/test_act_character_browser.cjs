@@ -7,6 +7,7 @@ const {chromium}=require('./require-module.cjs').requireModule('playwright');
 
 const [pwa,android,fixtures]=process.argv.slice(2);
 assert.ok(pwa&&android&&fixtures,'Usage: node tools/test_act_character_browser.cjs <PWA> <APK assets/web> <fixtures>');
+const version=require('node:fs').readFileSync(path.join(__dirname,'../VERSION'),'utf8').trim();
 const mime={'.html':'text/html','.js':'text/javascript','.mjs':'text/javascript','.json':'application/json',
  '.css':'text/css','.wasm':'application/wasm','.png':'image/png','.jpg':'image/webp','.webp':'image/webp'};
 const roots={web:path.resolve(pwa),android:path.resolve(android)};
@@ -28,9 +29,9 @@ const textHas=async(locator,pattern)=>{
 
 async function open(browser,url,client,save){
  const context=await browser.newContext({viewport:{width:844,height:390},reducedMotion:'reduce',serviceWorkers:'block'});
- await context.addInitScript(({client,backup})=>{
+ await context.addInitScript(({client,backup,version})=>{
   localStorage.setItem('ygo-preload-visuals','sounds');
-  localStorage.setItem('ygo-patch-notes-seen','0.2.48');
+  localStorage.setItem('ygo-patch-notes-seen',version);
   if(client==='android'){
    window.ShadowNative={
     load:()=>localStorage.getItem('roster-qa-android')||backup,
@@ -39,7 +40,7 @@ async function open(browser,url,client,save){
   }else if(backup!=='{}'&&!localStorage.getItem('shadow-run-mobile')){
    localStorage.setItem('shadow-run-mobile',backup);
   }
- },{client,backup:save?await fs.readFile(path.join(fixtures,save+'.json'),'utf8'):'{}'});
+ },{client,version,backup:save?await fs.readFile(path.join(fixtures,save+'.json'),'utf8'):'{}'});
  const page=await context.newPage();
  const errors=[];
  page.on('pageerror',error=>errors.push(error.message));
@@ -49,7 +50,7 @@ async function open(browser,url,client,save){
   assert.ok(await page.evaluate(()=>!!window.shadowTest),'Game startup failed');
  }
  catch(error){console.error(client,save,errors,(await page.locator('body').innerText()).slice(0,600));await context.close();throw error}
- assert.equal(await page.locator('.title-version').textContent(),'v0.2.48');
+ assert.equal(await page.locator('.title-version').textContent(),'v'+version);
  const offlineOffer=page.locator('#web-offline-offer [data-later]');
  if(await offlineOffer.isVisible())await offlineOffer.click();
  return {page,context,errors};
@@ -86,6 +87,18 @@ async function freshRoster(page){
   await series(page,name).click();
   const available=await page.locator('.roster .portrait:not(.locked)').evaluateAll(nodes=>nodes.map(n=>+n.dataset.character));
   assert.deepEqual(available,pair);
+  const newcomers=page.locator('.roster .portrait').filter({has:page.locator('img')});
+  for(const entry of await newcomers.all()){
+   const id=Number(await entry.getAttribute('data-character'));
+   if(id<112)continue;
+   await entry.click();
+   const hero=page.locator('.duelist-hero img');
+   assert.equal(await hero.getAttribute('alt'),await entry.locator('span').textContent());
+   const cover=page.locator('.duelist-selection img[data-do="inspect-pack"]').first();
+   for(const art of [hero,cover]){
+    await art.evaluate(async img=>{await img.decode();if(!img.naturalWidth)throw Error('Empty duelist art: '+img.src)});
+   }
+  }
  }
  await page.locator('[data-character="109"]').click();
  assert.equal(await button(page,'new').isDisabled(),true);

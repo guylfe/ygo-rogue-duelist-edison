@@ -83,7 +83,7 @@ with tempfile.TemporaryDirectory() as tmp, patch.object(storage,'ROOT',Path(tmp)
                    for (player,_),cards in decks.items() for cid in cards), i
         assert 20<=len(decks[0,'DECK'])<=60 and len(decks[0,'EXTRA'])<=15, i
         assert len(decks[1,'DECK'])>=20, i
-    print('PASS all 50 opening duels use GOAT cards or a player’s curated personal-pack exceptions')
+    print('PASS all playable opening duels use GOAT cards or a playerâ€™s curated personal-pack exceptions')
 
     signature=game.BY_NAME['Copycat']['id']
     assert acts.FIRST_ACT[signature]==2
@@ -173,7 +173,7 @@ with tempfile.TemporaryDirectory() as tmp, patch.object(storage,'ROOT',Path(tmp)
         assert len(run['pool'])==before+9 and pid in run['opened_packs']
         assert all(acts.allows(run,cid) for cid in run['pool'][before:])
         assert pid in acts.pin_options(run)
-    print('PASS 14 legal newcomer starts, own home support, encounters, previews, exact ace rewards, purchasable signature packs, and era gates')
+    print('PASS all 37 legal later-Act starts, own home support, encounters, previews, exact ace rewards, purchasable signature packs, and era gates')
 
     # Keep one new duelist selected from the real starter through the finale.
     dispatch('new',dict(character=106,level=-1,slot=1,replace=True))

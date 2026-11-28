@@ -6478,7 +6478,7 @@
     "race": "Insect",
     "ace": "Earthbound Immortal Uru",
     "enablers": [
-      "Mother Spider",
+      "Howling Insect",
       "Dark Spider"
     ],
     "support": "EN-SOVR",
@@ -6681,7 +6681,7 @@
     "race": "Beast",
     "ace": "Earthbound Immortal Cusillu",
     "enablers": [
-      "Yellow Baboon, Archer of the Forest",
+      "Giant Rat",
       "X-Saber Airbellum"
     ],
     "support": "EN-ANPR",
@@ -7492,7 +7492,7 @@
     "ace": "Skull Flame",
     "enablers": [
       "Burning Skull Head",
-      "Supersonic Skull Flame"
+      "Pyramid Turtle"
     ],
     "support": "EN-CSOC",
     "tags": [
