@@ -126,29 +126,27 @@ with tempfile.TemporaryDirectory() as folder, patch.object(storage, 'ROOT', Path
     profile.update(unlocked=content.PLAYABLE_IDS[:])
     storage.write(storage.ROOT / 'profile.json', profile)
 
-    # Create a genuine v0.2.48-shaped save with fewer late-act offers before
-    # adding native fixtures. A grown catalog must leave those offers intact.
-    random.seed(421)
-    legacy = start_gx(98, False)
-    assert not acts.route_limited(legacy)
-    for _ in range(7):
-        begin(legacy['routes'][0])
-        legacy = win()
-    assert 0 < len(legacy['routes']) < 5
-    fields = {key: deepcopy(legacy[key]) for key in ('next_boss', 'routes', 'opponent', 'pool', 'route_rewards')}
+    # Build a legacy offer under the original native roster sizes, then reload
+    # it after restoring the expanded production rosters.
+    legacy_rules = {act: dict(rules, home=[i for i in rules['home'] if i < 112])
+                    for act, rules in acts.LATER_OPPONENTS.items()}
+    with patch.dict(acts.LATER_OPPONENTS, legacy_rules):
+        random.seed(421)
+        legacy = start_gx(98, False)
+        assert not acts.route_limited(legacy)
+        for _ in range(7):
+            begin(legacy['routes'][0])
+            legacy = win()
+        assert 0 < len(legacy['routes']) < 5
+        fields = {key: deepcopy(legacy[key]) for key in ('next_boss', 'routes', 'opponent', 'pool', 'route_rewards')}
 
-    # Reuse unrelated baseline opponents as fixture IDs to exercise the full
-    # route path before new production roster content is available.
-    expanded = {act: dict(rules, home=rules['home'] + [0, 2, 4, 5, 6, 7, 8, 11])
-                for act, rules in acts.LATER_OPPONENTS.items()}
-    with patch.dict(acts.LATER_OPPONENTS, expanded):
-        loaded = command('select-slot', 1)
-        assert all(loaded[key] == value for key, value in fields.items())
-        assert not acts.route_limited(loaded)
-        verify_preview_reservation(98)
-        for cards_only in (False, True):
-            samples = [verify_later_acts(seed, character, cards_only)
-                       for seed, character in ((11, 98), (77, 106), (302, 98), (881, 106))]
-            assert all(any(row[index] == 2 for row in samples) for index in (0, 1)), samples
-            print(f'PASS {"Singles & packs" if cards_only else "Standard"}: guest wins by act {samples}')
+    loaded = command('select-slot', 1)
+    assert all(loaded[key] == value for key, value in fields.items())
+    assert not acts.route_limited(loaded)
+    verify_preview_reservation(98)
+    for cards_only in (False, True):
+        samples = [verify_later_acts(seed, character, cards_only)
+                   for seed, character in ((11, 98), (77, 106), (302, 98), (881, 106))]
+        assert all(any(row[index] == 2 for row in samples) for index in (0, 1)), samples
+        print(f'PASS {"Singles & packs" if cards_only else "Standard"}: guest wins by act {samples}')
     print('PASS later-act openers and finales, rerolls, reloads, reserved guest boss, legacy offers, and loop/Tag/secret behavior')

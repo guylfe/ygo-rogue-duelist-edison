@@ -48,8 +48,8 @@ assert digest(content.PLAYABLE_IDS[:36]) == '2beb586475543e995f2460c25ed4f356dea
 assert digest(content.PACKS[:126]) == '1cf01f98a38ef644eb5a628f8439d31cce30f8f5339e178573c27bf3011467f1'
 legacy_decks = {str(i): [content.opponent_record(t*3,i) for t in range(3)] + [content.opponent_record(0,i,loop=1)] for i in content.GAME_DECKS}
 assert digest(legacy_decks) == '85ea1f16e0426bde6ce0cab9dcb9ca2a349c6407209086c5eba9d26fbf534539'
-assert content.PLAYABLE_IDS[36:] == list(range(98,112))
-assert [content.CHARACTERS[i]['series'] for i in range(98,112)] == ['GX']*8+["5D's"]*6
+assert content.PLAYABLE_IDS[36:] == list(range(98,135))
+assert [content.CHARACTERS[i]['series'] for i in range(98,135)] == ['GX']*8+["5D's"]*6+['GX']*12+["5D's"]*11
 assert 'Infernity Launcher' not in game.BY_NAME
 assert 'EN-EXVC' not in content.PACK_BY_ID and len(acts.ACTS)==3
 

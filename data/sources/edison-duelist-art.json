@@ -68,5 +68,215 @@
     "character": "Kalin Kessler",
     "profile": "https://www.yugioh.com/characters/kalin-kessler",
     "portrait": "https://uploads3.yugioh.com/character/286/detail/detail/kessler-lrg.png"
+  },
+  {
+    "character": "Luna",
+    "profile": "https://www.yugioh.com/characters/luna",
+    "portrait": "https://uploads3.yugioh.com/character/30/detail/detail/luna-l.png",
+    "credit": "Konami Cross Media NY, official Yu-Gi-Oh! anime character profile"
+  },
+  {
+    "character": "Tetsu Trudge",
+    "profile": "https://www.yugioh.com/characters/tetsu-trudge",
+    "portrait": "https://uploads1.yugioh.com/character/356/detail/detail/trudge-lrg.png",
+    "credit": "Konami Cross Media NY, official Yu-Gi-Oh! anime character profile"
+  },
+  {
+    "character": "Greiger",
+    "profile": "https://www.yugioh.com/characters/greiger",
+    "portrait": "https://uploads2.yugioh.com/character/119/detail/detail/grieger-lg.png",
+    "credit": "Konami Cross Media NY, official Yu-Gi-Oh! anime character profile"
+  },
+  {
+    "character": "Misty Tredwell",
+    "profile": "https://angryanimebitches.com/2021/12/29/yu-gi-oh-5ds-episode-38-39/",
+    "portrait": "https://animeblog-media.nyc3.digitaloceanspaces.com/2025/12/YGO-5Ds-Ep-38-Img-06.png",
+    "credit": "Episode 38 anime still, hosted by AngryAnimeBitches"
+  },
+  {
+    "character": "Carly Carmine",
+    "profile": "https://angryanimebitches.com/2021/12/29/yu-gi-oh-5ds-episode-38-39/",
+    "portrait": "https://animeblog-media.nyc3.digitaloceanspaces.com/2025/12/YGO-5Ds-Ep-38-Img-01.png",
+    "credit": "Episode 38 anime still, hosted by AngryAnimeBitches"
+  },
+  {
+    "character": "Roman Goodwin",
+    "profile": "https://www.yugioh.com/characters/roman-goodwin",
+    "portrait": "https://uploads3.yugioh.com/character/118/detail/detail/roman-lg.png",
+    "credit": "Konami Cross Media NY, official Yu-Gi-Oh! anime character profile"
+  },
+  {
+    "character": "Devack",
+    "profile": "https://www.yugioh.com/characters/devack",
+    "portrait": "https://uploads2.yugioh.com/character/289/detail/detail/devack-lrg.png",
+    "credit": "Konami Cross Media NY, official Yu-Gi-Oh! anime character profile"
+  },
+  {
+    "character": "Sayer",
+    "profile": "https://www.animecharactersdatabase.com/characters.php?id=62756",
+    "portrait": "https://ami.animecharactersdatabase.com/uploads/chars/5457-854458463.png",
+    "credit": "Anime still, hosted by Anime Characters Database"
+  },
+  {
+    "character": "Rex Goodwin",
+    "profile": "https://www.yugioh.com/characters/rex-goodwin",
+    "portrait": "https://uploads3.yugioh.com/character/32/detail/detail/rex-l.png",
+    "credit": "Konami Cross Media NY, official Yu-Gi-Oh! anime character profile"
+  },
+  {
+    "character": "Lazar",
+    "profile": "https://www.yugioh.com/characters/lazar",
+    "portrait": "https://uploads1.yugioh.com/character/33/detail/detail/lazar-l.png",
+    "credit": "Konami Cross Media NY, official Yu-Gi-Oh! anime character profile"
+  },
+  {
+    "character": "Hunter Pace",
+    "profile": "https://www.yugioh.com/yu-gi-oh-5ds/fire-it-up/558",
+    "portrait": "https://i.ytimg.com/vi/5g3-dSbquvc/hq2.jpg",
+    "credit": "Konami Cross Media NY official anime upload, Fire It Up!, Episode 8; original thumbnail frame encoded as PNG"
+  },
+  {
+    "character": "Bastion Misawa",
+    "profile": "https://www.yugioh.com/characters/bastion-misawa",
+    "portrait": "https://uploads4.yugioh.com/character/20/detail/detail/bastion-l.png?1375717320",
+    "source_type": "Official Yu-Gi-Oh! anime character profile",
+    "source_detail": "Profile credited as Bastion Misawa. Original artwork cropped and set on a transparent canvas.",
+    "id": 112,
+    "portrait_asset": "assets/duelist-bastion-misawa.png",
+    "pack_asset": "assets/packs/DRAFT-BASTION-MISAWA.jpg",
+    "pack_art": "Derived from the credited portrait using the existing GX Duelist Pack layout.",
+    "credit": "Yu-Gi-Oh! GX ©1996 Kazuki Takahashi, ©2004 NAS • TV TOKYO. Official Yu-Gi-Oh! sources published by Konami Cross Media NY."
+  },
+  {
+    "character": "Axel Brodie",
+    "profile": "https://www.yugioh.com/characters/axel-brodie",
+    "portrait": "https://uploads4.yugioh.com/character/34/detail/detail/axel-l.png?1375717527",
+    "source_type": "Official Yu-Gi-Oh! anime character profile",
+    "source_detail": "Profile credited as Axel Brodie. Original artwork cropped and set on a transparent canvas.",
+    "id": 113,
+    "portrait_asset": "assets/duelist-axel-brodie.png",
+    "pack_asset": "assets/packs/DRAFT-AXEL-BRODIE.jpg",
+    "pack_art": "Derived from the credited portrait using the existing GX Duelist Pack layout.",
+    "credit": "Yu-Gi-Oh! GX ©1996 Kazuki Takahashi, ©2004 NAS • TV TOKYO. Official Yu-Gi-Oh! sources published by Konami Cross Media NY."
+  },
+  {
+    "character": "Syrus Truesdale",
+    "profile": "https://www.yugioh.com/characters/syrus-truesdale",
+    "portrait": "https://uploads1.yugioh.com/character/25/detail/detail/syrus-l.png?1371841093",
+    "source_type": "Official Yu-Gi-Oh! anime character profile",
+    "source_detail": "Profile credited as Syrus Truesdale. Original artwork cropped and set on a transparent canvas.",
+    "id": 114,
+    "portrait_asset": "assets/duelist-syrus-truesdale.png",
+    "pack_asset": "assets/packs/DRAFT-SYRUS-TRUESDALE.jpg",
+    "pack_art": "Derived from the credited portrait using the existing GX Duelist Pack layout.",
+    "credit": "Yu-Gi-Oh! GX ©1996 Kazuki Takahashi, ©2004 NAS • TV TOKYO. Official Yu-Gi-Oh! sources published by Konami Cross Media NY."
+  },
+  {
+    "character": "Tyranno Hassleberry",
+    "profile": "https://www.yugioh.com/characters/tyranno-hassleberry",
+    "portrait": "https://uploads2.yugioh.com/character/38/detail/detail/tyranno-l.png?1375717603",
+    "source_type": "Official Yu-Gi-Oh! anime character profile",
+    "source_detail": "Profile credited as Tyranno Hassleberry. Original artwork cropped and set on a transparent canvas.",
+    "id": 115,
+    "portrait_asset": "assets/duelist-tyranno-hassleberry.png",
+    "pack_asset": "assets/packs/DRAFT-TYRANNO-HASSLEBERRY.jpg",
+    "pack_art": "Derived from the credited portrait using the existing GX Duelist Pack layout.",
+    "credit": "Yu-Gi-Oh! GX ©1996 Kazuki Takahashi, ©2004 NAS • TV TOKYO. Official Yu-Gi-Oh! sources published by Konami Cross Media NY."
+  },
+  {
+    "character": "Camula",
+    "profile": "https://www.yugioh.com/characters/camula",
+    "portrait": "https://uploads1.yugioh.com/character/191/detail/detail/camula-lg.png?1394212759",
+    "source_type": "Official Yu-Gi-Oh! anime character profile",
+    "source_detail": "Profile credited as Camula. Original artwork cropped and set on a transparent canvas.",
+    "id": 116,
+    "portrait_asset": "assets/duelist-camula.png",
+    "pack_asset": "assets/packs/DRAFT-CAMULA.jpg",
+    "pack_art": "Derived from the credited portrait using the existing GX Duelist Pack layout.",
+    "credit": "Yu-Gi-Oh! GX ©1996 Kazuki Takahashi, ©2004 NAS • TV TOKYO. Official Yu-Gi-Oh! sources published by Konami Cross Media NY."
+  },
+  {
+    "character": "Amnael",
+    "profile": "https://www.yugioh.com/characters/amnael",
+    "portrait": "https://uploads2.yugioh.com/character/491/detail/detail/amnael-lg2.png?1426015916",
+    "source_type": "Official Yu-Gi-Oh! anime character profile",
+    "source_detail": "Profile credited as Amnael. Original artwork cropped and set on a transparent canvas.",
+    "id": 117,
+    "portrait_asset": "assets/duelist-amnael.png",
+    "pack_asset": "assets/packs/DRAFT-AMNAEL.jpg",
+    "pack_art": "Derived from the credited portrait using the existing GX Duelist Pack layout.",
+    "credit": "Yu-Gi-Oh! GX ©1996 Kazuki Takahashi, ©2004 NAS • TV TOKYO. Official Yu-Gi-Oh! sources published by Konami Cross Media NY."
+  },
+  {
+    "character": "Adrian Gecko",
+    "profile": "https://www.yugioh.com/characters/adrian-gecko",
+    "portrait": "https://uploads3.yugioh.com/character/36/detail/detail/adrian-l.png?1373910351",
+    "source_type": "Official Yu-Gi-Oh! anime character profile",
+    "source_detail": "Profile credited as Adrian Gecko. Original artwork cropped and set on a transparent canvas.",
+    "id": 118,
+    "portrait_asset": "assets/duelist-adrian-gecko.png",
+    "pack_asset": "assets/packs/DRAFT-ADRIAN-GECKO.jpg",
+    "pack_art": "Derived from the credited portrait using the existing GX Duelist Pack layout.",
+    "credit": "Yu-Gi-Oh! GX ©1996 Kazuki Takahashi, ©2004 NAS • TV TOKYO. Official Yu-Gi-Oh! sources published by Konami Cross Media NY."
+  },
+  {
+    "character": "Professor Viper",
+    "profile": "https://www.yugioh.com/characters/thelonious-viper",
+    "portrait": "https://uploads2.yugioh.com/character/115/detail/detail/viper-lrg.png?1390924894",
+    "source_type": "Official Yu-Gi-Oh! anime character profile",
+    "source_detail": "Profile credited as Thelonious Viper. Original artwork cropped and set on a transparent canvas.",
+    "id": 119,
+    "portrait_asset": "assets/duelist-professor-viper.png",
+    "pack_asset": "assets/packs/DRAFT-PROFESSOR-VIPER.jpg",
+    "pack_art": "Derived from the credited portrait using the existing GX Duelist Pack layout.",
+    "credit": "Yu-Gi-Oh! GX ©1996 Kazuki Takahashi, ©2004 NAS • TV TOKYO. Official Yu-Gi-Oh! sources published by Konami Cross Media NY."
+  },
+  {
+    "character": "Titan",
+    "profile": "https://www.yugioh.com/characters/titan",
+    "portrait": "https://uploads1.yugioh.com/character/237/detail/detail/titan-lg.png?1394213466",
+    "source_type": "Official Yu-Gi-Oh! anime character profile",
+    "source_detail": "Profile credited as Titan. Original artwork cropped and set on a transparent canvas.",
+    "id": 120,
+    "portrait_asset": "assets/duelist-titan.png",
+    "pack_asset": "assets/packs/DRAFT-TITAN.jpg",
+    "pack_art": "Derived from the credited portrait using the existing GX Duelist Pack layout.",
+    "credit": "Yu-Gi-Oh! GX ©1996 Kazuki Takahashi, ©2004 NAS • TV TOKYO. Official Yu-Gi-Oh! sources published by Konami Cross Media NY."
+  },
+  {
+    "character": "Don Zaloog",
+    "profile": "https://www.yugioh.com/yu-gi-oh-gx/the-dark-scorpions/379",
+    "portrait": "https://www.youtube.com/watch?v=g1CxW2l-HPY&t=570s",
+    "source_type": "Episode still",
+    "source_detail": "Yu-Gi-Oh! GX, season 1 episode 39, The Dark Scorpions, at 09:30 in the Official Yu-Gi-Oh! upload. Cutout from the 240 × 180 storyboard frame with shadow levels lifted.",
+    "id": 121,
+    "portrait_asset": "assets/duelist-don-zaloog.png",
+    "pack_asset": "assets/packs/DRAFT-DON-ZALOOG.jpg",
+    "pack_art": "Derived from the credited portrait using the existing GX Duelist Pack layout.",
+    "credit": "Yu-Gi-Oh! GX ©1996 Kazuki Takahashi, ©2004 NAS • TV TOKYO. Official Yu-Gi-Oh! sources published by Konami Cross Media NY."
+  },
+  {
+    "character": "Tania",
+    "profile": "https://www.yugioh.com/characters/tania",
+    "portrait": "https://uploads3.yugioh.com/character/234/detail/detail/tania-lg.png?1394212878",
+    "source_type": "Official Yu-Gi-Oh! anime character profile",
+    "source_detail": "Profile credited as Tania. Original artwork cropped and set on a transparent canvas.",
+    "id": 122,
+    "portrait_asset": "assets/duelist-tania.png",
+    "pack_asset": "assets/packs/DRAFT-TANIA.jpg",
+    "pack_art": "Derived from the credited portrait using the existing GX Duelist Pack layout.",
+    "credit": "Yu-Gi-Oh! GX ©1996 Kazuki Takahashi, ©2004 NAS • TV TOKYO. Official Yu-Gi-Oh! sources published by Konami Cross Media NY."
+  },
+  {
+    "character": "Nightshroud",
+    "profile": "https://www.yugioh.com/characters/nightshroud",
+    "portrait": "https://uploads1.yugioh.com/character/412/detail/detail/nightshroud-lrg.png?1394212602",
+    "source_type": "Official Yu-Gi-Oh! anime character profile",
+    "source_detail": "Profile credited as Nightshroud. Original artwork cropped and set on a transparent canvas.",
+    "id": 123,
+    "portrait_asset": "assets/duelist-nightshroud.png",
+    "pack_asset": "assets/packs/DRAFT-NIGHTSHROUD.jpg",
+    "pack_art": "Derived from the credited portrait using the existing GX Duelist Pack layout.",
+    "credit": "Yu-Gi-Oh! GX ©1996 Kazuki Takahashi, ©2004 NAS • TV TOKYO. Official Yu-Gi-Oh! sources published by Konami Cross Media NY."
   }
 ]

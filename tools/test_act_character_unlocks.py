@@ -66,7 +66,7 @@ def test_campaign(directory):
             raise AssertionError(f'Locked character {i} started a campaign')
 
     random.seed(0)
-    run = command('new', dict(character=0, replace=True))['run']
+    run = command('new', dict(character=0, replace=True, cards_only=True))['run']
     run = command('act-starter', run['starter_offer_order'][0])['run']
     fusion = game.BY_NAME['Elemental HERO Flame Wingman']['id']
     synchro = game.BY_NAME['Stardust Dragon']['id']
